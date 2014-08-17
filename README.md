@@ -12,6 +12,15 @@ the latests state-of-the-art Kivy's methods.
 
 ![ScreenShot](https://raw.github.com/kivy-garden/garden.mapview/master/screenshot.png)
 
+# Requirements
+
+It requires the `concurrent.futures`. If you are on python 2.7, you can
+use `futures`:
+
+```
+pip install futures
+```
+
 # Usage
 
 This widget can be either used within Python or Kv. That's said, not
