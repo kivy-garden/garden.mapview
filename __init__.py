@@ -24,6 +24,7 @@ from math import cos, sin, ceil, log, tan, pi, atan, exp
 from random import choice
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 import requests
+import json
 from kivy.lang import Builder
 from kivy.compat import string_types
 
@@ -59,6 +60,10 @@ Builder.load_string("""
 
 def clamp(x, minimum, maximum):
     return max(minimum, min(x, maximum))
+
+
+def flatten(l):
+    return [item for sublist in l for item in sublist]
 
 
 class Downloader(object):
@@ -287,6 +292,137 @@ class MarkerMapLayer(MapLayer):
         y = mapview.map_source.get_y(mapview.zoom, marker.lon)
         marker.x = int(x - marker.width * marker.anchor_x)
         marker.y = int(y - marker.height * marker.anchor_y)
+
+
+class GeoJsonMapLayer(MapLayer):
+
+    source = StringProperty()
+    geojson = ObjectProperty()
+    #features = ListProperty()
+
+    def reposition(self):
+        if self.geojson:
+            print "Reload geojson"
+            self.on_geojson(self, self.geojson)
+
+    def on_geojson(self, instance, geojson):
+        if self.parent is None:
+            return
+        #self.features = []
+        self.canvas.clear()
+        self._geojson_part(geojson)
+
+    def on_source(self, instance, value):
+        if value.startswith("http://") or value.startswith("https://"):
+            Downloader.instance().download(value, self._load_geojson_url)
+        else:
+            with open(fn, "rb") as fd:
+                geojson = json.load(fd)
+            self.geojson = geojson
+
+    def _load_geojson_url(self, url, r):
+        self.geojson = r.json()
+
+    def _geojson_part(self, part):
+        tp = part["type"]
+        if tp == "FeatureCollection":
+            for feature in part["features"]:
+                self._geojson_part_f(feature)
+        elif tp == "Feature":
+            self._geojson_part_f(part)
+        else:
+            # unhandled geojson part
+            pass
+
+    def _geojson_part_f(self, feature):
+        properties = feature["properties"]
+        geometry = feature["geometry"]
+        graphics = self._geojson_part_geometry(geometry)
+        for g in graphics:
+            self.canvas.add(g)
+
+    def _geojson_part_geometry(self, geometry):
+        from kivy.graphics import Mesh, Line
+        tp = geometry["type"]
+        graphics = []
+        if tp == "Polygon":
+            for c in geometry["coordinates"]:
+                xy = list(self._lonlat_to_xy(c))
+                print xy
+                vertices, indices = self.triangulate(xy)
+                graphics.append(Color(1, 0, 0, .5))
+                graphics.append(Line(points=flatten(xy)))
+                graphics.append(Color(1, 0, 0, .1))
+                graphics.append(Mesh(vertices=vertices, indices=indices, mode="triangle"))
+                break
+        return graphics
+
+    def _lonlat_to_xy(self, lonlats):
+        view = self.parent
+        map_source = view.map_source
+        zoom = view.zoom
+        for lon, lat in lonlats:
+            yield (map_source.get_x(zoom, lon), map_source.get_y(zoom, lat))
+
+    def triangulate(self, v):
+        vertices = []
+        for p1, p2, p3 in self._triangulate(v):
+            vertices.extend([
+                p1[0], p1[1], 0, 0,
+                p2[0], p2[1], 0, 0,
+                p3[0], p3[1], 0, 0
+            ])
+        indices = range(len(vertices) / 4)
+        return vertices, indices
+
+    def _triangulate(self, v, orientation=None):
+        # based on http://web.fi.uba.ar/~ssantisi/works/poly_tri/poly_tri.py
+        # no holes supported, yet.
+        if orientation is None:
+            orientation = self._orientation(v)
+        v = v[:]
+        while len(v) > 3:
+            for cur in range(len(v)):
+                prev = cur - 1
+                next = (cur + 1) % len(v)
+                if self._determinant(v[cur], v[prev], v[next]) == orientation and \
+                    self._no_interior(v[cur], v[prev], v[next], v, orientation):
+                        yield v[cur], v[prev], v[next]
+                        del v[cur]
+                        break
+            else:
+                return#raise Exception("Error: didnt find a triangle")
+        yield v[0], v[1], v[2]
+
+    def _orientation(self, v):
+        area = 0.
+        for i in range(len(v)):
+            area += v[i - 1][0] * v[i][1] - v[i - 1][1] * v[i][0]
+        if area >= 0:
+            return 0  # counter-clockwise
+        return 1  # clockwise
+
+    def _determinant(self, p1, p2, p3):
+    	determ = (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p3[0] - p1[0]) * (p2[1] - p1[1])
+    	if determ >= 0:
+    		return 1  # clockwise
+    	return 0  # counter-clockwise
+
+    def _no_interior(self, p1, p2, p3, v, poly_or):
+        determinant = self._determinant
+        for p in v:
+            if p == p1 or p == p2 or p == p3:
+                # Don't bother checking against yourself
+                continue
+            if determinant(p1, p2, p) == poly_or or \
+                determinant(p3, p1, p) == poly_or or \
+                determinant(p2, p3, p) == poly_or:
+                # This point is outside
+                continue
+            # The point is inside
+            return False
+        # No points inside this triangle
+        return True
 
 
 class MapView(Widget):
@@ -632,36 +768,39 @@ RelativeLayout:
         lat: 3.057
         zoom: 15
 
-        on_map_relocated: mapview2.sync_to(self)
-        on_map_relocated: mapview3.sync_to(self)
+        #on_map_relocated: mapview2.sync_to(self)
+        #on_map_relocated: mapview3.sync_to(self)
 
         MapMarker:
             lon: 50.6394
             lat: 3.057
 
-    MapView:
-        id: mapview2
-        size_hint: None, None
-        size: 256, 256
-        map_source: "osm-hot"
-        center_y: root.center_y
-        center_x: root.width / 4.
+        GeoJsonMapLayer:
+            source: "https://storage.googleapis.com/maps-devrel/google.json"
 
-        ShadedLabel:
-            text: "OSM Hot"
-            pos: mapview2.pos
-
-    MapView:
-        id: mapview3
-        size_hint: None, None
-        size: 256, 256
-        map_source: "thunderforest-transport"
-        center_y: root.center_y
-        center_x: (root.width / 4.) * 3
-
-        ShadedLabel:
-            text: "Thunderforest Transport"
-            pos: mapview3.pos
+    # MapView:
+    #     id: mapview2
+    #     size_hint: None, None
+    #     size: 256, 256
+    #     map_source: "osm-hot"
+    #     center_y: root.center_y
+    #     center_x: root.width / 4.
+    #
+    #     ShadedLabel:
+    #         text: "OSM Hot"
+    #         pos: mapview2.pos
+    #
+    # MapView:
+    #     id: mapview3
+    #     size_hint: None, None
+    #     size: 256, 256
+    #     map_source: "thunderforest-transport"
+    #     center_y: root.center_y
+    #     center_x: (root.width / 4.) * 3
+    #
+    #     ShadedLabel:
+    #         text: "Thunderforest Transport"
+    #         pos: mapview3.pos
 
     Toolbar:
         top: root.top
