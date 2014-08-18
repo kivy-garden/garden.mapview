@@ -15,6 +15,7 @@ from os.path import join, exists
 from os import makedirs
 from kivy.clock import Clock
 from kivy.uix.widget import Widget
+from kivy.uix.image import Image
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty
 from kivy.graphics import Canvas, Color, Rectangle, PushMatrix, Translate, \
     PopMatrix
@@ -30,7 +31,7 @@ MIN_LATITUDE = -90.
 MAX_LATITUDE = 90.
 MIN_LONGITUDE = -180.
 MAX_LONGITUDE = 180.
-MAX_WORKERS = 2
+MAX_WORKERS = 5
 CACHE_DIR = "cache"
 
 Builder.load_string("""
@@ -47,6 +48,11 @@ Builder.load_string("""
             pos: self.pos
             size: self.size
         StencilPop
+
+<MapMarker>:
+    size_hint: None, None
+    size: "48dp", "48dp"
+    source: "icons/marker.png"
 
 """)
 
@@ -240,6 +246,35 @@ class MapSource(object):
                 _downloader = Downloader()
             _downloader.download(tile)
 
+class MapMarker(Image):
+    anchor_x = NumericProperty(0.5)
+    anchor_y = NumericProperty(0)
+    lat = NumericProperty(0)
+    lon = NumericProperty(0)
+
+
+class MapLayer(Widget):
+    viewport_x = NumericProperty(0)
+    viewport_y = NumericProperty(0)
+
+    def reposition(self):
+        pass
+
+
+class MarkerMapLayer(MapLayer):
+
+    def reposition(self):
+        mapview = self.parent
+        set_marker_position = self.set_marker_position
+        for marker in self.children:
+            set_marker_position(mapview, marker)
+
+    def set_marker_position(self, mapview, marker):
+        x = mapview.map_source.get_x(mapview.zoom, marker.lat)
+        y = mapview.map_source.get_y(mapview.zoom, marker.lon)
+        marker.x = int(x - marker.width * marker.anchor_x)
+        marker.y = int(y - marker.height * marker.anchor_y)
+
 
 class MapView(Widget):
     lon = NumericProperty()
@@ -286,6 +321,43 @@ class MapView(Widget):
         self.remove_all_tiles()
         self.load_visible_tiles(False)
 
+    def add_marker(self, marker, layer=None):
+        """Add a marker into the layer. If layer is None, it will be added in
+        the default marker layer. If there is no default marker layer, a new
+        one will be automatically created
+        """
+        if layer is None:
+            if not self._default_marker_layer:
+                layer = MarkerMapLayer()
+                self.add_layer(layer)
+            else:
+                layer = self._marker_layers[0]
+        layer.add_widget(marker)
+
+    def remove_marker(self, marker):
+        """Remove a marker from its layer
+        """
+        maker.detach()
+
+    def add_layer(self, layer):
+        """Add a new layer to update at the same time the base tile layer
+        """
+        if self._default_marker_layer is None and \
+            isinstance(layer, MarkerMapLayer):
+            self._default_marker_layer = layer
+        self._layers.append(layer)
+        c = self.canvas
+        self.canvas = self.canvas_layers
+        super(MapView, self).add_widget(layer)
+        self.canvas = c
+
+    def remove_layer(self, layer):
+        """Remove the layer
+        """
+        self._layers.remove(layer)
+        self.canvas = self.canvas_layers
+        super(MapView, self).remove_widget(layer)
+        self.canvas = c
 
     # Private API
 
@@ -297,10 +369,29 @@ class MapView(Widget):
             PushMatrix()
             self.g_translate = Translate()
             self.canvas_map = Canvas()
+            self.canvas_layers = Canvas()
             PopMatrix()
         self._tiles = []
         self._tilemap = {}
+        self._layers = []
+        self._default_marker_layer = None
         super(MapView, self).__init__(**kwargs)
+
+    def add_widget(self, widget):
+        if isinstance(widget, MapMarker):
+            self.add_marker(widget)
+        elif isinstance(widget, MapLayer):
+            self.add_layer(widget)
+        else:
+            super(MapView, self).add_widget(widget)
+
+    def remove_widget(self, widget):
+        if isinstance(widget, MapMarker):
+            self.remove_marker(widget)
+        elif isinstance(widget, MapLayer):
+            self.remove_layer(widget)
+        else:
+            super(MapView, self).remove_widget(widget)
 
     def _get_x_y_for_zoom_level(self, zoom, x, y):
         deltazoom = pow(2, zoom - self.zoom)
@@ -310,11 +401,11 @@ class MapView(Widget):
 
     def on_viewport_x(self, instance, value):
         p = self.g_translate.xy
-        self.g_translate.xy = (-value, p[1])
+        self.g_translate.xy = (-int(value), p[1])
 
     def on_viewport_y(self, instance, value):
         p = self.g_translate.xy
-        self.g_translate.xy = (p[0], -value)
+        self.g_translate.xy = (p[0], -int(value))
 
     def on_touch_down(self, touch):
         if not self.collide_point(*touch.pos):
@@ -336,10 +427,9 @@ class MapView(Widget):
     def on_touch_move(self, touch):
         if touch.grab_current is not self:
             return
-        self.lon = self.map_source.get_lon(self.zoom, self.viewport_x + self.width / 2.)
-        self.lat = self.map_source.get_lat(self.zoom, self.viewport_y + self.height / 2.)
-        self.viewport_x -= touch.dx
-        self.viewport_y -= touch.dy
+        self._update_coords(
+            self.viewport_x - touch.dx,
+            self.viewport_y - touch.dy)
         self.load_visible_tiles(True)
         return True
 
@@ -349,6 +439,8 @@ class MapView(Widget):
         self.viewport_y = y
         self.lon = self.map_source.get_lon(zoom, x + self.width / 2.)
         self.lat = self.map_source.get_lat(zoom, y + self.height / 2.)
+        for layer in self._layers:
+            layer.reposition()
 
     def load_visible_tiles(self, relocate=False):
         map_source = self.map_source
@@ -446,6 +538,8 @@ class MapView(Widget):
         return key in self._tilemap
 
     def on_size(self, instance, size):
+        for layer in self._layers:
+            layer.size = size
         self.remove_all_tiles()
         self.load_visible_tiles(False)
         self.center_on(self.lon, self.lat)
@@ -491,6 +585,13 @@ RelativeLayout:
 
     MapView:
         id: mapview
+        lon: 50.6394
+        lat: 3.057
+        zoom: 19
+
+        MapMarker:
+            lon: 50.6394
+            lat: 3.057
 
     Toolbar:
         top: root.top
