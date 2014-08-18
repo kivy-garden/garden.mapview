@@ -284,6 +284,8 @@ class MapView(Widget):
     viewport_x = NumericProperty(0)
     viewport_y = NumericProperty(0)
 
+    __events__ = ["on_map_relocated"]
+
     # Public API
 
     def unload(self):
@@ -320,6 +322,15 @@ class MapView(Widget):
         self._update_coords(x, y)
         self.remove_all_tiles()
         self.load_visible_tiles(False)
+
+    def get_latlon_at(self, x, y, zoom=None):
+        """Return the current (lat, lon) within the (x, y) widget coordinate
+        """
+        if zoom is None:
+            zoom = self.zoom
+        return (
+            self.map_source.get_lat(zoom, y + self.viewport_y),
+            self.map_source.get_lon(zoom, x + self.viewport_x))
 
     def add_marker(self, marker, layer=None):
         """Add a marker into the layer. If layer is None, it will be added in
@@ -358,6 +369,14 @@ class MapView(Widget):
         self.canvas = self.canvas_layers
         super(MapView, self).remove_widget(layer)
         self.canvas = c
+
+    def sync_to(self, other):
+        """Reflect the lat/lon/zoom of the other MapView to the current one.
+        """
+        if self.zoom != other.zoom:
+            self.set_zoom_at(other.zoom, *self.center)
+        self.center_on(*other.get_latlon_at(*self.center))
+
 
     # Private API
 
@@ -399,13 +418,16 @@ class MapView(Widget):
         ny = (self.viewport_y + y) * deltazoom - y
         return nx, ny
 
+    def on_map_relocated(self, zoom, lat, lon):
+        pass
+
     def on_viewport_x(self, instance, value):
         p = self.g_translate.xy
-        self.g_translate.xy = (-int(value), p[1])
+        self.g_translate.xy = (self.x -int(value), p[1])
 
     def on_viewport_y(self, instance, value):
         p = self.g_translate.xy
-        self.g_translate.xy = (p[0], -int(value))
+        self.g_translate.xy = (p[0], self.y -int(value))
 
     def on_touch_down(self, touch):
         if not self.collide_point(*touch.pos):
@@ -416,10 +438,7 @@ class MapView(Widget):
         elif touch.is_double_tap:
             d = 1
         if d is not None:
-            zoom = clamp(self.zoom + d,
-                              self.map_source.get_min_zoom(),
-                              self.map_source.get_max_zoom())
-            self.set_zoom_at(zoom, touch.x, touch.y)
+            self.set_zoom_at(self.zoom + d, touch.x, touch.y)
         else:
             touch.grab(self)
         return True
@@ -441,6 +460,7 @@ class MapView(Widget):
         self.lat = self.map_source.get_lat(zoom, y + self.height / 2.)
         for layer in self._layers:
             layer.reposition()
+        self.dispatch("on_map_relocated", self.zoom, self.lon, self.lat)
 
     def load_visible_tiles(self, relocate=False):
         map_source = self.map_source
@@ -581,17 +601,53 @@ if __name__ == "__main__":
             pos: self.pos
             size: self.size
 
+<ShadedLabel@Label>:
+    size: self.texture_size
+    canvas.before:
+        Color:
+            rgba: .2, .2, .2, .6
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
 RelativeLayout:
 
     MapView:
         id: mapview
         lon: 50.6394
         lat: 3.057
-        zoom: 19
+        zoom: 15
+
+        on_map_relocated: mapview2.sync_to(self)
+        on_map_relocated: mapview3.sync_to(self)
 
         MapMarker:
             lon: 50.6394
             lat: 3.057
+
+    MapView:
+        id: mapview2
+        size_hint: None, None
+        size: 256, 256
+        map_source: "osm-hot"
+        center_y: root.center_y
+        center_x: root.width / 4.
+
+        ShadedLabel:
+            text: "OSM Hot"
+            pos: mapview2.pos
+
+    MapView:
+        id: mapview3
+        size_hint: None, None
+        size: 256, 256
+        map_source: "thunderforest-transport"
+        center_y: root.center_y
+        center_x: (root.width / 4.) * 3
+
+        ShadedLabel:
+            text: "Thunderforest Transport"
+            pos: mapview3.pos
 
     Toolbar:
         top: root.top
