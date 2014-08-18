@@ -344,6 +344,7 @@ class MapView(Widget):
             else:
                 layer = self._marker_layers[0]
         layer.add_widget(marker)
+        layer.set_marker_position(self, marker)
 
     def remove_marker(self, marker):
         """Remove a marker from its layer
