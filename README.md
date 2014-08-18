@@ -14,11 +14,11 @@ the latests state-of-the-art Kivy's methods.
 
 # Requirements
 
-It requires the `concurrent.futures`. If you are on python 2.7, you can
-use `futures`:
+It requires the `concurrent.futures` and `requests`. If you are on python 2.7,
+you can use `futures`:
 
 ```
-pip install futures
+pip install futures requests
 ```
 
 # Usage

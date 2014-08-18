@@ -23,7 +23,7 @@ from collections import deque
 from math import cos, sin, ceil, log, tan, pi, atan, exp
 from random import choice
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
-from urllib2 import urlopen
+import requests
 from kivy.lang import Builder
 from kivy.compat import string_types
 
@@ -85,7 +85,7 @@ class Downloader(object):
         uri = tile.map_source.url.format(z=tile.zoom, x=tile.tile_x, y=tile_y,
                               s=choice(tile.map_source.subdomains))
         #print "Download {}".format(uri)
-        data = urlopen(uri, timeout=5).read()
+        data = requests.get(uri, timeout=5).content
         with open(cache_fn, "wb") as fd:
             fd.write(data)
         #print "Downloaded {} bytes: {}".format(len(data), uri)
