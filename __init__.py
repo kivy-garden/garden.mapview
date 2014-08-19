@@ -11,7 +11,7 @@ MapView is a Kivy widget that display maps.
 __all__ = ["MapView", "MapSource"]
 __version__ = "0.1"
 
-from os.path import join, exists
+from os.path import join, exists, dirname
 from os import makedirs
 from kivy.clock import Clock
 from kivy.uix.widget import Widget
@@ -53,7 +53,7 @@ Builder.load_string("""
 <MapMarker>:
     size_hint: None, None
     size: "48dp", "48dp"
-    source: "icons/marker.png"
+    source: root.default_marker_fn
 
 """)
 
@@ -265,6 +265,10 @@ class MapMarker(Image):
     anchor_y = NumericProperty(0)
     lat = NumericProperty(0)
     lon = NumericProperty(0)
+
+    @property
+    def default_marker_fn(self):
+        return join(dirname(__file__), "icons", "marker.png")
 
 
 class MapLayer(Widget):
