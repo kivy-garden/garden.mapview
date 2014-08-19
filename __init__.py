@@ -16,16 +16,16 @@ from os import makedirs
 from kivy.clock import Clock
 from kivy.uix.widget import Widget
 from kivy.uix.image import Image
-from kivy.properties import StringProperty, NumericProperty, ObjectProperty
+from kivy.properties import NumericProperty, ObjectProperty
 from kivy.graphics import Canvas, Color, Rectangle, PushMatrix, Translate, \
     PopMatrix
-from collections import deque
-from math import cos, sin, ceil, log, tan, pi, atan, exp
+from math import cos, ceil, log, tan, pi, atan, exp
 from random import choice
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 import requests
 from kivy.lang import Builder
 from kivy.compat import string_types
+
 
 MIN_LATITUDE = -90.
 MAX_LATITUDE = 90.
@@ -33,6 +33,7 @@ MIN_LONGITUDE = -180.
 MAX_LONGITUDE = 180.
 MAX_WORKERS = 5
 CACHE_DIR = "cache"
+
 
 Builder.load_string("""
 <MapView>:
@@ -355,14 +356,14 @@ class MapView(Widget):
                 layer = MarkerMapLayer()
                 self.add_layer(layer)
             else:
-                layer = self._marker_layers[0]
+                layer = self._default_marker_layer
         layer.add_widget(marker)
         layer.set_marker_position(self, marker)
 
     def remove_marker(self, marker):
         """Remove a marker from its layer
         """
-        maker.detach()
+        marker.detach()
 
     def add_layer(self, layer):
         """Add a new layer to update at the same time the base tile layer
