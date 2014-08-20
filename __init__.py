@@ -25,6 +25,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 import requests
 from kivy.lang import Builder
 from kivy.compat import string_types
+from kivy.metrics import dp
 
 
 MIN_LATITUDE = -90.
@@ -182,6 +183,7 @@ class MapSource(object):
         self.attribution = attribution
         self.subdomains = subdomains
         self.cache_fmt = "{cache_key}_{zoom}_{tile_x}_{tile_y}.{image_ext}"
+        self.dp_tile_size = min(dp(self.tile_size), self.tile_size * 2)
 
     @staticmethod
     def from_provider(key):
@@ -199,7 +201,7 @@ class MapSource(object):
         (0, 0) is located at the top left.
         """
         lon = clamp(lon, MIN_LONGITUDE, MAX_LONGITUDE)
-        return ((lon + 180.) / 360. * pow(2., zoom)) * self.tile_size
+        return ((lon + 180.) / 360. * pow(2., zoom)) * self.dp_tile_size
 
     def get_y(self, zoom, lat):
         """Get the y position on the map using this map source's projection
@@ -208,19 +210,19 @@ class MapSource(object):
         lat = clamp(-lat, MIN_LATITUDE, MAX_LATITUDE)
         lat = lat * pi / 180.
         return ((1.0 - log(tan(lat) + 1.0 / cos(lat)) / pi) / \
-            2. * pow(2., zoom)) * self.tile_size
+            2. * pow(2., zoom)) * self.dp_tile_size
 
     def get_lon(self, zoom, x):
         """Get the longitude to the x position in the map source's projection
         """
-        dx = x / float(self.tile_size)
+        dx = x / float(self.dp_tile_size)
         lon = dx / pow(2., zoom) * 360. - 180.
         return clamp(lon, MIN_LONGITUDE, MAX_LONGITUDE)
 
     def get_lat(self, zoom, y):
         """Get the latitude to the y position in the map source's projection
         """
-        dy = y / float(self.tile_size)
+        dy = y / float(self.dp_tile_size)
         n = pi - 2 * pi * dy / pow(2., zoom)
         lat = -180. / pi * atan(.5 * (exp(n) - exp(-n)))
         return clamp(lat, MIN_LATITUDE, MAX_LATITUDE)
@@ -486,7 +488,7 @@ class MapView(Widget):
         zoom = self.zoom
         dirs = [0, 1, 0, -1, 0]
 
-        size = map_source.tile_size
+        size = map_source.dp_tile_size
         max_x_end = map_source.get_col_count(zoom)
         max_y_end = map_source.get_row_count(zoom)
         x_count = int(ceil(self.width / float(size))) + 1
