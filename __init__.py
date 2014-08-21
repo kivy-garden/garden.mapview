@@ -28,6 +28,7 @@ import requests
 from kivy.lang import Builder
 from kivy.compat import string_types
 from kivy.metrics import dp
+from time import time
 
 
 MIN_LATITUDE = -90.
@@ -98,6 +99,7 @@ class Downloader(object):
         return setattr, (tile, "source", cache_fn)
 
     def _check_executor(self, dt):
+        start = time()
         try:
             for future in as_completed(self._futures[:], 0):
                 self._futures.remove(future)
@@ -111,6 +113,11 @@ class Downloader(object):
                     continue
                 callback, args = result
                 callback(*args)
+
+                # capped executor in time, in order to prevent too much slowiness.
+                # seems to works quite great with big zoom-in/out
+                if time() - start > 120:
+                    break
         except TimeoutError:
             pass
 
@@ -245,10 +252,7 @@ class MapSource(object):
         """
         if tile.state == "done":
             return
-        if exists(tile.cache_fn):
-            tile.source = tile.cache_fn
-        else:
-            Downloader.instance().download_tile(tile)
+        Downloader.instance().download_tile(tile)
 
 
 class MapMarker(Image):
