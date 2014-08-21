@@ -521,10 +521,10 @@ class MapView(Scatter):
         # recalculate viewport
         zoom = self._zoom
         scale = self.scale
-        if self.scale >= 2.:
+        if self.scale > 2.:
             zoom += 1
             scale /= 2.
-        elif self.scale <= 0.5:
+        elif self.scale < 1:
             zoom -= 1
             scale *= 2.
         zoom = clamp(zoom, self.map_source.min_zoom, self.map_source.max_zoom)
