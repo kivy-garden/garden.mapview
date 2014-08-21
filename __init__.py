@@ -322,8 +322,8 @@ class MapView(Scatter):
         zoom = self._zoom
         lon = clamp(lon, MIN_LONGITUDE, MAX_LONGITUDE)
         lat = clamp(lat, MIN_LATITUDE, MAX_LATITUDE)
-        x = map_source.get_x(zoom, lon) - self.width / 2.
-        y = map_source.get_y(zoom, lat) - self.height / 2.
+        x = map_source.get_x(zoom, lon) - self.width / 2. / self.scale
+        y = map_source.get_y(zoom, lat) - self.height / 2. / self.scale
         self.delta_x = -x
         self.delta_y = -y
         self.pos = 0, 0
