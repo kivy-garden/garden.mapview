@@ -494,6 +494,8 @@ class MapView(Widget):
         with self._scatter.canvas:
             self.canvas_map = Canvas()
             self.canvas_layers = Canvas()
+        self._scale_target_anim = False
+        self._scale_target = 1.
         Clock.schedule_interval(self._animate_color, 1 / 60.)
         super(MapView, self).__init__(**kwargs)
 
@@ -543,28 +545,46 @@ class MapView(Widget):
     def on_map_relocated(self, zoom, lat, lon):
         pass
 
+    def animated_diff_scale_at(self, d, x, y):
+        self._scale_target_time = 1.
+        self._scale_target_pos = x, y
+        if self._scale_target_anim == False:
+            self._scale_target_anim = True
+            self._scale_target = self._scatter.scale * (2 ** d)
+        else:
+            self._scale_target += d
+        Clock.unschedule(self._animate_scale)
+        Clock.schedule_interval(self._animate_scale, 1 / 60.)
+
+    def _animate_scale(self, dt):
+        diff = self._scale_target - self._scatter.scale
+        #diff = min(diff * dt, diff)
+        self._scale_target_time -= dt
+        print "diff scale", diff
+        self.scale_at(self._scatter.scale + diff / 2., *self._scale_target_pos)
+        return self._scale_target_time > 0
+
+    def diff_scale_at(self, d, x, y):
+        scatter = self._scatter
+        scale = scatter.scale * (2 ** d)
+        self.scale_at(scale, x, y)
+
+    def scale_at(self, scale, x, y):
+        scatter = self._scatter
+        rescale = scale * 1.0 / scatter.scale
+        scatter.apply_transform(Matrix().scale(rescale, rescale, rescale),
+                             post_multiply=True,
+                             anchor=scatter.to_local(x, y))
+
     def on_touch_down(self, touch):
         if not self.collide_point(*touch.pos):
             return
         if "button" in touch.profile and touch.button in ("scrolldown", "scrollup"):
             d = 1 if touch.button == "scrollup" else -1
-            self.set_zoom_at(self._zoom + d, *touch.pos)
+            self.animated_diff_scale_at(d * 0.25, *touch.pos)
             return True
         elif touch.is_double_tap:
-            """
-            from kivy.animation import Animation
-            scale = self.scale
-            next_scale = 2 ** (self._zoom + 1)
-            d = next_scale - scale
-            def _on_progress(_, widget, progression):
-                self.set_zoo_at(scale + progression * d, touch.x, touch.y)
-                print _, widget, progression
-            anim = Animation(d=.1, t="out_quad")
-            anim.bind(on_progress=_on_progress)
-            anim.start(self)
-            """
-            x, y = self.to_local(*touch.pos)
-            self.set_zoom_at(self._zoom + 1, x, y)
+            self.animated_diff_scale_at(1, *touch.pos)
             return True
         return super(MapView, self).on_touch_down(touch)
 
