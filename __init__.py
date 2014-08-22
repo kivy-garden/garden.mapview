@@ -17,7 +17,8 @@ from kivy.clock import Clock
 from kivy.uix.widget import Widget
 from kivy.uix.image import Image
 from kivy.uix.scatter import Scatter
-from kivy.properties import NumericProperty, ObjectProperty, AliasProperty
+from kivy.properties import NumericProperty, ObjectProperty, AliasProperty, \
+    ListProperty
 from kivy.graphics import Canvas, Color, Rectangle, PushMatrix, Translate, \
     PopMatrix
 from kivy.graphics.transformation import Matrix
@@ -45,6 +46,30 @@ Builder.load_string("""
     source: root.default_marker_fn
     size: dp(48) / self.scale, dp(48) / self.scale
     allow_stretch: True
+
+<MapView>:
+    canvas.before:
+        StencilPush
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        StencilUse
+        Color:
+            rgba: self.background_color
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    canvas.after:
+        StencilUnUse
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        StencilPop
+
+<MapViewScatter>:
+    auto_bring_to_front: False
+    do_rotation: False
+    scale_min: 0.1
 
 """)
 
@@ -297,7 +322,17 @@ class MarkerMapLayer(MapLayer):
         marker.y = int(y - marker.height * marker.anchor_y)
 
 
-class MapView(Scatter):
+class MapViewScatter(Scatter):
+    def on_transform(self, *args):
+        super(MapViewScatter, self).on_transform(*args)
+        self.parent.on_transform(self.transform)
+
+    def collide_point(self, x, y):
+        #print "collide_point", x, y
+        return True
+
+
+class MapView(Widget):
     lon = NumericProperty()
     lat = NumericProperty()
     zoom = NumericProperty(5)
@@ -305,15 +340,17 @@ class MapView(Scatter):
     map_source = ObjectProperty(MapSource())
     delta_x = NumericProperty(0)
     delta_y = NumericProperty(0)
+    background_color = ListProperty([181 / 255., 208 / 255., 208 / 255., 1])
+    __events__ = ["on_map_relocated"]
 
-    def _get_viewport_pos(self):
-        vx, vy = self.to_local(0, 0)
+    @property
+    def viewport_pos(self):
+        vx, vy = self._scatter.to_local(self.x, self.y)
         return vx - self.delta_x, vy - self.delta_y
 
-    viewport_pos = AliasProperty(_get_viewport_pos, None, bind=[
-        "transform", "pos", "scale", "size"])
-
-    __events__ = ["on_map_relocated"]
+    @property
+    def scale(self):
+        return self._scatter.scale
 
     # Public API
 
@@ -330,11 +367,12 @@ class MapView(Scatter):
         zoom = self._zoom
         lon = clamp(lon, MIN_LONGITUDE, MAX_LONGITUDE)
         lat = clamp(lat, MIN_LATITUDE, MAX_LATITUDE)
-        x = map_source.get_x(zoom, lon) - self.width / 2. / self.scale
-        y = map_source.get_y(zoom, lat) - self.height / 2. / self.scale
+        scale = self._scatter.scale
+        x = map_source.get_x(zoom, lon) - self.center_x / scale
+        y = map_source.get_y(zoom, lat) - self.center_y / scale
         self.delta_x = -x
         self.delta_y = -y
-        self.pos = 0, 0
+        self._scatter.pos = 0, 0
         self.trigger_update(True)
 
     def set_zoom_at(self, zoom, x, y, scale=None):
@@ -349,22 +387,23 @@ class MapView(Scatter):
         scale = scale or 1.
 
         # first, rescale the scatter
-        scale = clamp(scale, self.scale_min, self.scale_max)
-        rescale = scale * 1.0 / self.scale
-        self.apply_transform(Matrix().scale(rescale, rescale, rescale),
+        scatter = self._scatter
+        scale = clamp(scale, scatter.scale_min, scatter.scale_max)
+        rescale = scale * 1.0 / scatter.scale
+        scatter.apply_transform(Matrix().scale(rescale, rescale, rescale),
                              post_multiply=True,
-                             anchor=self.to_local(x, y))
+                             anchor=scatter.to_local(x, y))
 
         # adjust position if the zoom changed
         c1 = self.map_source.get_col_count(self._zoom)
         c2 = self.map_source.get_col_count(zoom)
         if c1 != c2:
             f = float(c2) / float(c1)
-            self.delta_x = self.x + self.delta_x * f
-            self.delta_y = self.y + self.delta_y * f
+            self.delta_x = scatter.x + self.delta_x * f
+            self.delta_y = scatter.y + self.delta_y * f
             # back to 0 every time
-            self.apply_transform(Matrix().translate(
-                -self.x, -self.y, 0
+            scatter.apply_transform(Matrix().translate(
+                -scatter.x, -scatter.y, 0
             ), post_multiply=True)
 
         # avoid triggering zoom changes.
@@ -441,17 +480,20 @@ class MapView(Scatter):
     def __init__(self, **kwargs):
         from kivy.base import EventLoop
         EventLoop.ensure_window()
-        self.canvas = Canvas()
-        with self.canvas:
-            self.canvas_map = Canvas()
-            self.canvas_layers = Canvas()
         self._tiles = []
         self._tiles_bg = []
         self._tilemap = {}
         self._layers = []
         self._default_marker_layer = None
         self._need_redraw_all = False
+        self._transform_lock = False
         self.trigger_update(True)
+        self.canvas = Canvas()
+        self._scatter = MapViewScatter()
+        self.add_widget(self._scatter)
+        with self._scatter.canvas:
+            self.canvas_map = Canvas()
+            self.canvas_layers = Canvas()
         Clock.schedule_interval(self._animate_color, 1 / 60.)
         super(MapView, self).__init__(**kwargs)
 
@@ -521,38 +563,32 @@ class MapView(Scatter):
             anim.bind(on_progress=_on_progress)
             anim.start(self)
             """
-            self.set_zoom_at(self._zoom + 1, *touch.pos)
+            x, y = self.to_local(*touch.pos)
+            self.set_zoom_at(self._zoom + 1, x, y)
             return True
         return super(MapView, self).on_touch_down(touch)
 
-    def collide_point(self, x, y):
-        #print "collide_point", x, y
-        return True
-
     def on_transform(self, *args):
-        ret = super(MapView, self).on_transform(*args)
-        if not hasattr(self, "_blk"):
-            self._blk = False
-        if self._blk:
+        if self._transform_lock:
             return
-        self._blk = True
+        self._transform_lock = True
         # recalculate viewport
         zoom = self._zoom
-        scale = self.scale
-        if self.scale > 2.:
+        scatter = self._scatter
+        scale = scatter.scale
+        if scale > 2.:
             zoom += 1
             scale /= 2.
-        elif self.scale < 1:
+        elif scale < 1:
             zoom -= 1
             scale *= 2.
         zoom = clamp(zoom, self.map_source.min_zoom, self.map_source.max_zoom)
         if zoom != self._zoom:
-            self.set_zoom_at(zoom, self.x, self.y, scale=scale)
+            self.set_zoom_at(zoom, scatter.x, scatter.y, scale=scale)
             self.trigger_update(True)
         else:
             self.trigger_update(False)
-        self._blk = False
-        return ret
+        self._transform_lock = False
 
     def trigger_update(self, full):
         self._need_redraw_full = full or self._need_redraw_full
@@ -561,45 +597,50 @@ class MapView(Scatter):
 
     def do_update(self, dt):
         zoom = self._zoom
-        self.lon = self.map_source.get_lon(zoom, self.width / 2. - self.x - self.delta_x)
-        self.lat = self.map_source.get_lat(zoom, self.height / 2. - self.y - self.delta_y)
+        self.lon = self.map_source.get_lon(zoom, self.center_x - self._scatter.x - self.delta_x)
+        self.lat = self.map_source.get_lat(zoom, self.center_y - self._scatter.y - self.delta_y)
         for layer in self._layers:
             layer.reposition()
         self.dispatch("on_map_relocated", zoom, self.lon, self.lat)
 
         if self._need_redraw_full:
             self._need_redraw_full = False
-            self.remove_all_tiles()
-            self.load_visible_tiles(False)
+            self.move_tiles_to_background()
+            self.load_visible_tiles()
         else:
-            self.load_visible_tiles(True)
+            self.load_visible_tiles()
 
-    def load_visible_tiles(self, relocate=False):
+    def bbox_for_zoom(self, vx, vy, w, h, zoom):
+        # return a tile-bbox for the zoom
+        map_source = self.map_source
+        size = map_source.dp_tile_size
+        scale = self.scale
+
+        max_x_end = map_source.get_col_count(zoom)
+        max_y_end = map_source.get_row_count(zoom)
+
+        x_count = int(ceil(w / scale / float(size))) + 1
+        y_count = int(ceil(h / scale / float(size))) + 1
+
+        tile_x_first = int(clamp(vx / float(size), 0, max_x_end))
+        tile_y_first = int(clamp(vy / float(size), 0, max_y_end))
+        tile_x_last = tile_x_first + x_count
+        tile_y_last = tile_y_first + y_count
+        tile_x_last = int(clamp(tile_x_last, tile_x_first, max_x_end))
+        tile_y_last = int(clamp(tile_y_last, tile_y_first, max_y_end))
+
+        x_count = tile_x_last - tile_x_first
+        y_count = tile_y_last - tile_y_first
+        return (tile_x_first, tile_y_first, tile_x_last, tile_y_last,
+                x_count, y_count)
+
+    def load_visible_tiles(self):
         map_source = self.map_source
         vx, vy = self.viewport_pos
         zoom = self._zoom
         dirs = [0, 1, 0, -1, 0]
-
+        bbox_for_zoom = self.bbox_for_zoom
         size = map_source.dp_tile_size
-
-        def bbox_for_zoom(vx, vy, w, h, zoom):
-            max_x_end = map_source.get_col_count(zoom)
-            max_y_end = map_source.get_row_count(zoom)
-
-            x_count = int(ceil(w / self.scale / float(size))) + 1
-            y_count = int(ceil(h / self.scale / float(size))) + 1
-
-            tile_x_first = int(clamp(vx / float(size), 0, max_x_end))
-            tile_y_first = int(clamp(vy / float(size), 0, max_y_end))
-            tile_x_last = tile_x_first + x_count
-            tile_y_last = tile_y_first + y_count
-            tile_x_last = int(clamp(tile_x_last, tile_x_first, max_x_end))
-            tile_y_last = int(clamp(tile_y_last, tile_y_first, max_y_end))
-
-            x_count = tile_x_last - tile_x_first
-            y_count = tile_y_last - tile_y_first
-            return (tile_x_first, tile_y_first, tile_x_last, tile_y_last,
-                    x_count, y_count)
 
         tile_x_first, tile_y_first, tile_x_last, tile_y_last, \
             x_count, y_count = bbox_for_zoom(vx, vy, self.width, self.height, zoom)
@@ -645,7 +686,8 @@ class MapView(Scatter):
                 self._tiles.remove(tile)
                 self.canvas_map.remove(tile)
                 self.canvas_map.remove(tile.g_color)
-            elif relocate:
+            else:
+                tile.size = (size, size)
                 tile.pos = (tile_x * size + self.delta_x, tile_y * size + self.delta_y)
 
         # Load new tiles if needed
@@ -691,13 +733,17 @@ class MapView(Scatter):
         self.canvas_map.add(tile)
         self._tiles.append(tile)
 
-    def remove_all_tiles(self):
-        # remove all the tiles of the main map into the background map
-        # only the one who are already loaded
+    def move_tiles_to_background(self):
+        # remove all the tiles of the main map to the background map
+        # retain only the one who are on the current zoom level
+        # for all the tile in the background, stop the download if not yet started.
         zoom = self._zoom
         tiles = self._tiles
         btiles = self._tiles_bg
         canvas_map = self.canvas_map
+        tile_size = self.map_source.tile_size
+
+        # move all tiles to background
         while tiles:
             tile = tiles.pop()
             if tile.state == "loading":
@@ -705,16 +751,37 @@ class MapView(Scatter):
                 continue
             btiles.append(tile)
 
+        # clear the canvas
         self.canvas_map.clear()
         self.canvas_map.before.clear()
+        self._tilemap = {}
+
+        # unsure if it's really needed, i personnally didn't get issues right now
+        #btiles.sort(key=lambda z: -z.zoom)
+
+        # add all the btiles into the back canvas.
+        # except for the tiles that are owned by the current zoom level
         for tile in btiles[:]:
             if tile.zoom == zoom:
                 btiles.remove(tile)
+                tiles.append(tile)
+                tile.size = tile_size, tile_size
+                canvas_map.add(tile.g_color)
+                canvas_map.add(tile)
+                self.tile_map_set(tile.tile_x, tile.tile_y, True)
                 continue
             canvas_map.before.add(tile.g_color)
             canvas_map.before.add(tile)
+
+    def remove_all_tiles(self):
+        # clear the map of all tiles.
+        self.canvas_map.clear()
+        self.canvas_map.before.clear()
+        for tile in self._tiles:
+            tile.state = "done"
+        del self._tiles[:]
+        del self._tiles_bg[:]
         self._tilemap = {}
-        print "btiles", len(btiles)
 
     def tile_map_set(self, tile_x, tile_y, value):
         key = tile_y * self.map_source.get_col_count(self._zoom) + tile_x
@@ -730,7 +797,10 @@ class MapView(Scatter):
     def on_size(self, instance, size):
         for layer in self._layers:
             layer.size = size
-        print "!!! size changed", size
+        self.center_on(self.lon, self.lat)
+        self.trigger_update(True)
+
+    def on_pos(self, instance, pos):
         self.center_on(self.lon, self.lat)
         self.trigger_update(True)
 
@@ -748,6 +818,7 @@ class MapView(Scatter):
             raise Exception("Invalid map source provider")
         self.zoom = clamp(self.zoom,
                           self.map_source.min_zoom, self.map_source.max_zoom)
+        self.remove_all_tiles()
         self.trigger_update(True)
 
 
@@ -784,12 +855,11 @@ RelativeLayout:
 
     MapView:
         id: mapview
-        auto_bring_to_front: False
-        do_rotation: False
-        scale_min: 0.1
         lon: 50.6394
         lat: 3.057
         zoom: 8
+        #size_hint: .5, .5
+        #pos_hint: {"x": .25, "y": .25}
 
         #on_map_relocated: mapview2.sync_to(self)
         #on_map_relocated: mapview3.sync_to(self)
@@ -797,6 +867,10 @@ RelativeLayout:
         MapMarker:
             lon: 50.6394
             lat: 3.057
+
+        MapMarker
+            lon: -33.867
+            lat: 151.206
 
 #     MapView:
 #         id: mapview2
