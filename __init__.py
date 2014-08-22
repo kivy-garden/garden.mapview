@@ -87,7 +87,7 @@ class Downloader(object):
             return
         cache_fn = tile.cache_fn
         if exists(cache_fn):
-            return setattr, (tile, "source", cache_fn)
+            return tile.set_source, (cache_fn, )
         tile_y = tile.map_source.get_row_count(tile.zoom) - tile.tile_y - 1
         uri = tile.map_source.url.format(z=tile.zoom, x=tile.tile_x, y=tile_y,
                               s=choice(tile.map_source.subdomains))
@@ -96,7 +96,7 @@ class Downloader(object):
         with open(cache_fn, "wb") as fd:
             fd.write(data)
         #print "Downloaded {} bytes: {}".format(len(data), uri)
-        return setattr, (tile, "source", cache_fn)
+        return tile.set_source, (cache_fn, )
 
     def _check_executor(self, dt):
         start = time()
@@ -131,6 +131,10 @@ class Tile(Rectangle):
             cache_key=map_source.cache_key,
             **self.__dict__)
         return join(CACHE_DIR, fn)
+
+    def set_source(self, cache_fn):
+        self.source = cache_fn
+        self.state = "need-animation"
 
 
 class MapSource(object):
@@ -372,10 +376,8 @@ class MapView(Scatter):
             return
         x = self.map_source.get_x(zoom, self.lon) - self.delta_x
         y = self.map_source.get_y(zoom, self.lat) - self.delta_y
-        print "USER SET ZOOM TO", zoom, (self.lon, self.lat), (x, y)
         self.set_zoom_at(zoom, x, y)
         self.center_on(self.lon, self.lat)
-        print self.delta_x, self.delta_y
 
     def get_latlon_at(self, x, y, zoom=None):
         """Return the current (lat, lon) within the (x, y) widget coordinate
@@ -444,12 +446,28 @@ class MapView(Scatter):
             self.canvas_map = Canvas()
             self.canvas_layers = Canvas()
         self._tiles = []
+        self._tiles_bg = []
         self._tilemap = {}
         self._layers = []
         self._default_marker_layer = None
         self._need_redraw_all = False
         self.trigger_update(True)
+        Clock.schedule_interval(self._animate_color, 1 / 60.)
         super(MapView, self).__init__(**kwargs)
+
+    def _animate_color(self, dt):
+        for tile in self._tiles:
+            if tile.state != "need-animation":
+                continue
+            tile.g_color.a += dt * 10.  # 100ms
+            if tile.g_color.a >= 1:
+                tile.state = "animated"
+        for tile in self._tiles_bg:
+            if tile.state != "need-animation":
+                continue
+            tile.g_color.a += dt * 10.  # 100ms
+            if tile.g_color.a >= 1:
+                tile.state = "animated"
 
     def add_widget(self, widget):
         if isinstance(widget, MapMarker):
@@ -543,8 +561,8 @@ class MapView(Scatter):
 
     def do_update(self, dt):
         zoom = self._zoom
-        self.lon = self.map_source.get_lon(zoom, self.width / 2.)
-        self.lat = self.map_source.get_lat(zoom, self.height / 2.)
+        self.lon = self.map_source.get_lon(zoom, self.width / 2. - self.x - self.delta_x)
+        self.lat = self.map_source.get_lat(zoom, self.height / 2. - self.y - self.delta_y)
         for layer in self._layers:
             layer.reposition()
         self.dispatch("on_map_relocated", zoom, self.lon, self.lat)
@@ -558,40 +576,75 @@ class MapView(Scatter):
 
     def load_visible_tiles(self, relocate=False):
         map_source = self.map_source
-        zoom = self._zoom
         vx, vy = self.viewport_pos
+        zoom = self._zoom
         dirs = [0, 1, 0, -1, 0]
 
         size = map_source.dp_tile_size
-        max_x_end = map_source.get_col_count(zoom)
-        max_y_end = map_source.get_row_count(zoom)
 
-        x_count = int(ceil(self.width / self.scale / float(size))) + 1
-        y_count = int(ceil(self.height / self.scale / float(size))) + 1
+        def bbox_for_zoom(vx, vy, w, h, zoom):
+            max_x_end = map_source.get_col_count(zoom)
+            max_y_end = map_source.get_row_count(zoom)
 
-        tile_x_first = int(clamp(vx / float(size), 0, max_x_end))
-        tile_y_first = int(clamp(vy / float(size), 0, max_y_end))
-        tile_x_last = tile_x_first + x_count
-        tile_y_last = tile_y_first + y_count
-        tile_x_last = int(clamp(tile_x_last, tile_x_first, max_x_end))
-        tile_y_last = int(clamp(tile_y_last, tile_y_first, max_y_end))
+            x_count = int(ceil(w / self.scale / float(size))) + 1
+            y_count = int(ceil(h / self.scale / float(size))) + 1
 
-        x_count = tile_x_last - tile_x_first
-        y_count = tile_y_last - tile_y_first
+            tile_x_first = int(clamp(vx / float(size), 0, max_x_end))
+            tile_y_first = int(clamp(vy / float(size), 0, max_y_end))
+            tile_x_last = tile_x_first + x_count
+            tile_y_last = tile_y_first + y_count
+            tile_x_last = int(clamp(tile_x_last, tile_x_first, max_x_end))
+            tile_y_last = int(clamp(tile_y_last, tile_y_first, max_y_end))
+
+            x_count = tile_x_last - tile_x_first
+            y_count = tile_y_last - tile_y_first
+            return (tile_x_first, tile_y_first, tile_x_last, tile_y_last,
+                    x_count, y_count)
+
+        tile_x_first, tile_y_first, tile_x_last, tile_y_last, \
+            x_count, y_count = bbox_for_zoom(vx, vy, self.width, self.height, zoom)
 
         #print "Range {},{} to {},{}".format(
         #    tile_x_first, tile_y_first,
         #    tile_x_last, tile_y_last)
 
+        # Adjust tiles behind us
+        for tile in self._tiles_bg[:]:
+            tile_x = tile.tile_x
+            tile_y = tile.tile_y
+
+            f = 2 ** (zoom - tile.zoom)
+            w = self.width / f
+            h = self.height / f
+            btile_x_first, btile_y_first, btile_x_last, btile_y_last, \
+                _, _ = bbox_for_zoom(vx / f, vy / f, w, h, tile.zoom)
+
+            if tile_x < btile_x_first or tile_x >= btile_x_last or \
+               tile_y < btile_y_first or tile_y >= btile_y_last:
+               tile.state = "done"
+               self._tiles_bg.remove(tile)
+               self.canvas_map.before.remove(tile.g_color)
+               self.canvas_map.before.remove(tile)
+               continue
+
+            tsize = size * f
+            tile.size = tsize, tsize
+            tile.pos = (
+                tile_x * tsize + self.delta_x,
+                tile_y * tsize + self.delta_y)
+
         # Get rid of old tiles first
         for tile in self._tiles[:]:
             tile_x = tile.tile_x
             tile_y = tile.tile_y
+
             if tile_x < tile_x_first or tile_x >= tile_x_last or \
                tile_y < tile_y_first or tile_y >= tile_y_last:
                 tile.state = "done"
                 self.tile_map_set(tile_x, tile_y, False)
                 self._tiles.remove(tile)
+                self.canvas_map.remove(tile)
+                self.canvas_map.remove(tile.g_color)
             elif relocate:
                 tile.pos = (tile_x * size + self.delta_x, tile_y * size + self.delta_y)
 
@@ -620,28 +673,48 @@ class MapView(Scatter):
         map_source = self.map_source
         if self.tile_in_tile_map(x, y) or zoom != self._zoom:
             return
-        self.load_tile_for_source(self.map_source, 1., size, x, y)
+        self.load_tile_for_source(self.map_source, 1., size, x, y, zoom)
         # XXX do overlay support
         self.tile_map_set(x, y, True)
 
-    def load_tile_for_source(self, map_source, opacity, size, x, y):
+    def load_tile_for_source(self, map_source, opacity, size, x, y, zoom):
         tile = Tile(size=(size, size))
+        tile.g_color = Color(1, 1, 1, 0)
         tile.tile_x = x
         tile.tile_y = y
-        tile.zoom = self._zoom
+        tile.zoom = zoom
         tile.pos = (x * size + self.delta_x, y * size + self.delta_y)
         tile.map_source = map_source
         tile.state = "loading"
         map_source.fill_tile(tile)
+        self.canvas_map.add(tile.g_color)
         self.canvas_map.add(tile)
         self._tiles.append(tile)
 
     def remove_all_tiles(self):
+        # remove all the tiles of the main map into the background map
+        # only the one who are already loaded
+        zoom = self._zoom
+        tiles = self._tiles
+        btiles = self._tiles_bg
+        canvas_map = self.canvas_map
+        while tiles:
+            tile = tiles.pop()
+            if tile.state == "loading":
+                tile.state == "done"
+                continue
+            btiles.append(tile)
+
         self.canvas_map.clear()
-        for tile in self._tiles:
-            tile.state = "done"
-        del self._tiles[:]
+        self.canvas_map.before.clear()
+        for tile in btiles[:]:
+            if tile.zoom == zoom:
+                btiles.remove(tile)
+                continue
+            canvas_map.before.add(tile.g_color)
+            canvas_map.before.add(tile)
         self._tilemap = {}
+        print "btiles", len(btiles)
 
     def tile_map_set(self, tile_x, tile_y, value):
         key = tile_y * self.map_source.get_col_count(self._zoom) + tile_x
