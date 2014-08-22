@@ -529,19 +529,6 @@ class MapView(Widget):
         else:
             super(MapView, self).remove_widget(widget)
 
-    def _to_local(self, x, y, **kw):
-        x, y = super(MapView, self).to_local(x, y, **kw)
-        x += self.delta_x
-        y += self.delta_y
-        return x, y
-
-    def _get_x_y_for_zoom_level(self, zoom, x, y):
-        deltazoom = pow(2, zoom - self._zoom)
-        vx, vy = self.viewport_pos
-        nx = (vx + x) * deltazoom - x
-        ny = (vy + y) * deltazoom - y
-        return nx, ny
-
     def on_map_relocated(self, zoom, lat, lon):
         pass
 
@@ -550,19 +537,22 @@ class MapView(Widget):
         self._scale_target_pos = x, y
         if self._scale_target_anim == False:
             self._scale_target_anim = True
-            self._scale_target = self._scatter.scale * (2 ** d)
+            self._scale_target = d
         else:
             self._scale_target += d
         Clock.unschedule(self._animate_scale)
         Clock.schedule_interval(self._animate_scale, 1 / 60.)
 
     def _animate_scale(self, dt):
-        diff = self._scale_target - self._scatter.scale
-        #diff = min(diff * dt, diff)
+        diff = self._scale_target / 3.
+        if abs(diff) < 0.01:
+            diff = self._scale_target
+            self._scale_target = 0
+        else:
+            self._scale_target -= diff
         self._scale_target_time -= dt
-        print "diff scale", diff
-        self.scale_at(self._scatter.scale + diff / 2., *self._scale_target_pos)
-        return self._scale_target_time > 0
+        self.diff_scale_at(diff, *self._scale_target_pos)
+        return self._scale_target != 0
 
     def diff_scale_at(self, d, x, y):
         scatter = self._scatter
