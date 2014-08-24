@@ -3,7 +3,7 @@
 Mapview is a Kivy widget for displaying interactive maps. It has been
 designed with lot of inspirations of
 [Libchamplain](https://wiki.gnome.org/Projects/libchamplain) and
-[Leaflet](http://leafletjs.com/).
+[Leaflet](http://leafletjs.com/). 
 
 The goal of this widget is to be a replacement of Google Maps widget,
 even if this one works very well, it just works on Android with Kivy.
@@ -11,6 +11,14 @@ I wanted a map widget that can support custom map, and designed with
 the latests state-of-the-art Kivy's methods.
 
 ![ScreenShot](https://raw.github.com/kivy-garden/garden.mapview/master/screenshot.png)
+
+# Features
+
+* native multitouch handling (one for translate, many for translate and zoom)
+* asynchronous downloading
+* avoided GPU limitation / float precisions issues on tiles coordinates
+* marker support
+* blazing fast!
 
 # Requirements
 
