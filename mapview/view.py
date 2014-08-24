@@ -1,21 +1,20 @@
 # coding=utf-8
 
+__all__ = ["MapView", "MapMarker", "MapLayer", "MarkerMapLayer"]
+
 from os.path import join, dirname
 from kivy.clock import Clock
 from kivy.uix.widget import Widget
 from kivy.uix.image import Image
 from kivy.uix.scatter import Scatter
-from kivy.properties import NumericProperty, ObjectProperty, AliasProperty, \
-    ListProperty
-from kivy.graphics import Canvas, Color, Rectangle, PushMatrix, Translate, \
-    PopMatrix
+from kivy.properties import NumericProperty, ObjectProperty, ListProperty
+from kivy.graphics import Canvas, Color, Rectangle
 from kivy.graphics.transformation import Matrix
 from kivy.lang import Builder
 from kivy.compat import string_types
 from math import ceil
 from mapview import MIN_LONGITUDE, MAX_LONGITUDE, MIN_LATITUDE, MAX_LATITUDE, \
     CACHE_DIR
-from mapview.downloader import Downloader
 from mapview.source import MapSource
 from mapview.utils import clamp
 
@@ -68,14 +67,28 @@ class Tile(Rectangle):
         self.state = "need-animation"
 
 
-
-
-
 class MapMarker(Image):
+    """A marker on a map, that must be used on a :class:`MapMarker`
+    """
+
     anchor_x = NumericProperty(0.5)
+    """Anchor of the marker on the X axis. Defaults to 0.5, mean the anchor will
+    be at the X center of the image.
+    """
+
     anchor_y = NumericProperty(0)
+    """Anchor of the marker on the Y axis. Defaults to 0, mean the anchor will
+    be at the Y bottom of the image.
+    """
+
     lat = NumericProperty(0)
+    """Latitude of the marker
+    """
+
     lon = NumericProperty(0)
+    """Longitude of the marker
+    """
+
     scale = NumericProperty(1.)
 
     @property
@@ -84,14 +97,22 @@ class MapMarker(Image):
 
 
 class MapLayer(Widget):
+    """A map layer, that is repositionned everytime the :class:`MapView` is
+    moved.
+    """
     viewport_x = NumericProperty(0)
     viewport_y = NumericProperty(0)
 
     def reposition(self):
+        """Function called when :class:`MapView` is moved. You must recalculate
+        the position of your children.
+        """
         pass
 
 
 class MarkerMapLayer(MapLayer):
+    """A map layer for :class:`MapMarker`
+    """
 
     def reposition(self):
         mapview = self.parent
@@ -110,6 +131,7 @@ class MarkerMapLayer(MapLayer):
 
 
 class MapViewScatter(Scatter):
+    # internal
     def on_transform(self, *args):
         super(MapViewScatter, self).on_transform(*args)
         self.parent.on_transform(self.transform)
@@ -120,14 +142,32 @@ class MapViewScatter(Scatter):
 
 
 class MapView(Widget):
+    """MapView is the widget that control the map displaying, navigation, and
+    layers management.
+    """
+
     lon = NumericProperty()
+    """Longitude at the center of the widget
+    """
+
     lat = NumericProperty()
+    """Latitude at the center of the widget
+    """
+
     zoom = NumericProperty(5)
-    _zoom = NumericProperty(0)
+    """Zoom of the widget. Must be between :meth:`MapSource.get_min_zoom` and
+    :meth:`MapSource.get_max_zoom`. Default to 5.
+    """
+
     map_source = ObjectProperty(MapSource())
+    """Provider of the map, default to a empty :class:`MapSource`.
+    """
+
     delta_x = NumericProperty(0)
     delta_y = NumericProperty(0)
     background_color = ListProperty([181 / 255., 208 / 255., 208 / 255., 1])
+    _zoom = NumericProperty(0)
+
     __events__ = ["on_map_relocated"]
 
     @property

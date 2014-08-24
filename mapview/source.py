@@ -10,6 +10,9 @@ from mapview.utils import clamp
 
 
 class MapSource(object):
+    """Base class for implementing a map source / provider
+    """
+
     # list of available providers
     # cache_key: (is_overlay, minzoom, maxzoom, url, attribution)
     providers = {
