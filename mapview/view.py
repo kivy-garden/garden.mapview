@@ -45,6 +45,21 @@ Builder.load_string("""
             size: self.size
         StencilPop
 
+    Label:
+        text: root.map_source.attribution if hasattr(root.map_source, "attribution") else ""
+        size_hint: None, None
+        size: self.texture_size[0] + sp(8), self.texture_size[1] + sp(4)
+        font_size: "10sp"
+        right: [root.right, self.center][0]
+        color: 0, 0, 0, 1
+        canvas.before:
+            Color:
+                rgba: .8, .8, .8, .8
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+
 <MapViewScatter>:
     auto_bring_to_front: False
     do_rotation: False

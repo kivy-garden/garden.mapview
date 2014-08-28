@@ -48,7 +48,9 @@ class MapSource(object):
     def __init__(self,
         url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
         cache_key="osm", min_zoom=0, max_zoom=19, tile_size=256,
-        image_ext="png", attribution="", subdomains="abc"):
+        image_ext="png",
+        attribution="© OpenStreetMap contributors", 
+        subdomains="abc"):
         super(MapSource, self).__init__()
         self.url = url
         self.cache_key = cache_key
