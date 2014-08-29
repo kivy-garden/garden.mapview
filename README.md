@@ -20,7 +20,7 @@ the latests state-of-the-art Kivy's methods.
 * marker support
 * blazing fast!
 * supports Z/X/Y providers by default with `MapSource`
-* supports `.mbtiles <http://mbtiles.org>`_ via `MBTilesMapSource`
+* supports [.mbtiles](http://mbtiles.org) via `MBTilesMapSource`
 
 # Requirements
 
