@@ -3,7 +3,7 @@
 Mapview is a Kivy widget for displaying interactive maps. It has been
 designed with lot of inspirations of
 [Libchamplain](https://wiki.gnome.org/Projects/libchamplain) and
-[Leaflet](http://leafletjs.com/). 
+[Leaflet](http://leafletjs.com/).
 
 The goal of this widget is to be a replacement of Google Maps widget,
 even if this one works very well, it just works on Android with Kivy.
@@ -19,6 +19,8 @@ the latests state-of-the-art Kivy's methods.
 * avoided GPU limitation / float precisions issues on tiles coordinates
 * marker support
 * blazing fast!
+* supports Z/X/Y providers by default with `MapSource`
+* supports `.mbtiles <http://mbtiles.org>`_ via `MBTilesMapSource`
 
 # Requirements
 

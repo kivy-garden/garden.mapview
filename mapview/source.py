@@ -49,7 +49,7 @@ class MapSource(object):
         url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
         cache_key="osm", min_zoom=0, max_zoom=19, tile_size=256,
         image_ext="png",
-        attribution="© OpenStreetMap contributors", 
+        attribution="© OpenStreetMap contributors",
         subdomains="abc"):
         super(MapSource, self).__init__()
         self.url = url
@@ -62,6 +62,7 @@ class MapSource(object):
         self.subdomains = subdomains
         self.cache_fmt = "{cache_key}_{zoom}_{tile_x}_{tile_y}.{image_ext}"
         self.dp_tile_size = min(dp(self.tile_size), self.tile_size * 2)
+        self.default_lat = self.default_lon = self.default_zoom = None
 
     @staticmethod
     def from_provider(key):

@@ -30,6 +30,10 @@ class Downloader(object):
         if not exists(CACHE_DIR):
             makedirs(CACHE_DIR)
 
+    def submit(self, f, *args, **kwargs):
+        future = self.executor.submit(f, *args, **kwargs)
+        self._futures.append(future)
+
     def download_tile(self, tile):
         future = self.executor.submit(self._load_tile, tile)
         self._futures.append(future)
