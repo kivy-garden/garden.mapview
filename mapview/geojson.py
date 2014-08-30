@@ -45,7 +45,7 @@ class GeoJsonMapLayer(MapLayer):
         if value.startswith("http://") or value.startswith("https://"):
             Downloader.instance().download(value, self._load_geojson_url)
         else:
-            with open(fn, "rb") as fd:
+            with open(value, "rb") as fd:
                 geojson = json.load(fd)
             self.geojson = geojson
 
@@ -85,10 +85,10 @@ class GeoJsonMapLayer(MapLayer):
             tess.tesselate(WINDING_ODD, TYPE_POLYGONS)
 
             graphics.append(Color(1, 0, 0, .5))
-            for vertices in tess.meshes:
-                indices = range(len(vertices) / 4)
+            for vertices, indices in tess.meshes:
                 graphics.append(Mesh(
-                    vertices=vertices, indices=indices, mode="triangle_fan"))
+                    vertices=vertices, indices=indices,
+                    mode="triangle_fan"))
 
         return graphics
 
@@ -99,4 +99,6 @@ class GeoJsonMapLayer(MapLayer):
         dx = view.delta_x
         dy = view.delta_y
         for lon, lat in lonlats:
-            yield (map_source.get_x(zoom, lon) + dx, map_source.get_y(zoom, lat) + dy)
+            x = map_source.get_x(zoom, lon) + dx
+            y = map_source.get_y(zoom, lat) + dy
+            yield x, y
