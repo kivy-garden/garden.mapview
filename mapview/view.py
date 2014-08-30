@@ -169,9 +169,9 @@ class MapView(Widget):
     """Latitude at the center of the widget
     """
 
-    zoom = NumericProperty(5)
+    zoom = NumericProperty(0)
     """Zoom of the widget. Must be between :meth:`MapSource.get_min_zoom` and
-    :meth:`MapSource.get_max_zoom`. Default to 5.
+    :meth:`MapSource.get_max_zoom`. Default to 0.
     """
 
     map_source = ObjectProperty(MapSource())
