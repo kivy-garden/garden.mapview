@@ -14,7 +14,7 @@ the latests state-of-the-art Kivy's methods.
 
 # Features
 
-* native multitouch handling (one for translate, many for translate and zoom)
+* native multitouch (one for translate, many for translate and zoom)
 * asynchronous downloading
 * avoided GPU limitation / float precisions issues on tiles coordinates
 * marker support

@@ -74,6 +74,14 @@ You can also change the providers by:
 API
 ---
 
+.. py:class:: Coordinate(lon, lat)
+
+    Named tuple that represent a geographic coordinate with latitude/longitude
+
+    :param float lon: Longitude
+    :param float lat: Latitude
+
+
 .. py:class:: MapSource(url, cache_key, min_zoom, max_zoom, tile_size, image_ext, attribution, subdomains)
 
     Class that represent a map source. All the transformations from X/Y/Z to
@@ -97,7 +105,7 @@ API
     :param str subdomains: Domains substitutions for the {s} in the url.
         Defaults to "abc"
 
-    .. py:method:: get_x(, zoom, lon)
+    .. py:method:: get_x(zoom, lon)
 
         Get the x position to the longitude in the map source's projection
 
@@ -106,7 +114,7 @@ API
         :return: X position
         :rtype: float
 
-    .. py:method:: get_y(, zoom, lat)
+    .. py:method:: get_y(zoom, lat)
 
         Get the y position to the latitude in the map source's projection
 
@@ -115,7 +123,7 @@ API
         :return: Y position
         :rtype: float
 
-    .. py:method:: get_lon(, zoom, x)
+    .. py:method:: get_lon(zoom, x)
 
         Get the longitude to the x position in the map source's projection
 
@@ -124,7 +132,7 @@ API
         :return: Longitude
         :rtype: float
 
-    .. py:method:: get_lat(, zoom, y)
+    .. py:method:: get_lat(zoom, y)
 
         Get the latitude to the y position in the map source's projection
 
@@ -133,7 +141,7 @@ API
         :return: Latitude
         :rtype: float
 
-    .. py:method:: get_col_count(, zoom)
+    .. py:method:: get_col_count(zoom)
 
         Return the number of column for this provider at this zoom level.
 
@@ -141,7 +149,7 @@ API
         :return: Number of column
         :rtype: int
 
-    .. py:method:: get_row_count(, zoom)
+    .. py:method:: get_row_count(zoom)
 
         Return the number of row for this provider at this zoom level.
 
@@ -193,13 +201,13 @@ API
     MapView is a widget that control the map displaying, navigation and layers
     management.
 
-    .. py:method:: add_layer(, layer)
+    .. py:method:: add_layer(layer)
 
         Add a new layer to update at the same time than the base tile layer
 
         :param MapLayer layer: Map layer to add
 
-    .. py:method:: add_marker(, marker, layer=None)
+    .. py:method:: add_marker(marker, layer=None)
 
         Add a marker into a `layer`. If `layer` is None, it will be added in
         the default marker layer. If there is no default marker layer, a new
@@ -208,35 +216,35 @@ API
         :param MapMarker marker: The marker to add
         :param MarkerMapLayer layer: The layer to use
 
-    .. py:method:: center_on(, lat, lon)
+    .. py:method:: center_on(lat, lon)
 
         Center the map on the coordinate (lat, lon)
 
         :param float lat: Latitude
         :param float lon: Longitude
 
-    .. py:method:: get_latlon_at(, x, y, zoom=None):
+    .. py:method:: get_latlon_at(x, y, zoom=None):
 
         Return the current coordinate (lat, lon) at the (x, y) widget coordinate
 
         :param float x: X widget coordinate
         :param float y: Y widget coordinate
-        :return: (Latitude, Longitude)
-        :rtype: list
+        :return: lat/lon Coordinate
+        :rtype: :class:`Coordinate`
 
-    .. py:method:: remove_layer(, layer)
+    .. py:method:: remove_layer(layer)
 
         Remove a previously added :class:`MapLayer`
 
         :param MapLayer layer: A map layer
 
-    .. py:method:: remove_marker(, marker)
+    .. py:method:: remove_marker(marker)
 
         Remove a previously added :class:`MarkerMap`
 
         :param MarkerMap marker: The marker
 
-    .. py:method:: set_zoom_at(, zoom, x, y, scale=None)
+    .. py:method:: set_zoom_at(zoom, x, y, scale=None)
 
         Sets the zoom level, leaving the (x, y) at the exact same point in the
         view.

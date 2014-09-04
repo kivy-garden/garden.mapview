@@ -17,6 +17,6 @@ MIN_LONGITUDE = -180.
 MAX_LONGITUDE = 180.
 CACHE_DIR = "cache"
 
-
+from mapview.types import Coordinate
 from mapview.source import MapSource
 from mapview.view import MapView, MapMarker, MapLayer, MarkerMapLayer

@@ -7,14 +7,15 @@ from kivy.clock import Clock
 from kivy.uix.widget import Widget
 from kivy.uix.image import Image
 from kivy.uix.scatter import Scatter
-from kivy.properties import NumericProperty, ObjectProperty, ListProperty
+from kivy.properties import NumericProperty, ObjectProperty, ListProperty, \
+    AliasProperty
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.graphics.transformation import Matrix
 from kivy.lang import Builder
 from kivy.compat import string_types
 from math import ceil
 from mapview import MIN_LONGITUDE, MAX_LONGITUDE, MIN_LATITUDE, MAX_LATITUDE, \
-    CACHE_DIR
+    CACHE_DIR, Coordinate
 from mapview.source import MapSource
 from mapview.utils import clamp
 
@@ -185,6 +186,8 @@ class MapView(Widget):
 
     __events__ = ["on_map_relocated"]
 
+    # Public API
+
     @property
     def viewport_pos(self):
         vx, vy = self._scatter.to_local(self.x, self.y)
@@ -194,7 +197,17 @@ class MapView(Widget):
     def scale(self):
         return self._scatter.scale
 
-    # Public API
+    def get_bbox(self):
+        """Returns the bounding box from the bottom/left (lat1, lon1) to
+        top/right (lat2, lon2)
+        """
+        x1, y1 = self.to_local(0, 0)
+        x2, y2 = self.to_local(self.width / self.scale, self.height / self.scale)
+        c1 = self.get_latlon_at(x1, y1)
+        c2 = self.get_latlon_at(x2, y2)
+        return c1, c2
+
+    bbox = AliasProperty(get_bbox, None, bind=["lat", "lon", "_zoom"])
 
     def unload(self):
         """Unload the view and all the layers.
@@ -202,11 +215,19 @@ class MapView(Widget):
         """
         self.remove_all_tiles()
 
-    def center_on(self, lat, lon):
-        """Center the map on the coordinate (lat, lon)
+    def center_on(self, *args):
+        """Center the map on the coordinate :class:`Coordinate`, or a (lat, lon)
         """
         map_source = self.map_source
         zoom = self._zoom
+
+        if len(args) == 1 and isinstance(args[0], Coordinate):
+            lon = coord.lon
+            lat = coord.lat
+        elif len(args) == 2:
+            lat, lon = args
+        else:
+            raise Exception("Invalid argument for center_on")
         lon = clamp(lon, MIN_LONGITUDE, MAX_LONGITUDE)
         lat = clamp(lat, MIN_LATITUDE, MAX_LATITUDE)
         scale = self._scatter.scale
@@ -261,14 +282,15 @@ class MapView(Widget):
         self.center_on(self.lon, self.lat)
 
     def get_latlon_at(self, x, y, zoom=None):
-        """Return the current (lat, lon) within the (x, y) widget coordinate
+        """Return the current :class:`Coordinate` within the (x, y) widget
+        coordinate.
         """
         if zoom is None:
             zoom = self._zoom
         vx, vy = self.viewport_pos
-        return (
-            self.map_source.get_lat(zoom, y + vx),
-            self.map_source.get_lon(zoom, x + vy))
+        return Coordinate(
+            lat=self.map_source.get_lat(zoom, y + vy),
+            lon=self.map_source.get_lon(zoom, x + vx))
 
     def add_marker(self, marker, layer=None):
         """Add a marker into the layer. If layer is None, it will be added in
@@ -314,7 +336,7 @@ class MapView(Widget):
         """
         if self._zoom != other._zoom:
             self.set_zoom_at(other._zoom, *self.center)
-        self.center_on(*other.get_latlon_at(*self.center))
+        self.center_on(other.get_latlon_at(*self.center))
 
 
     # Private API
@@ -371,7 +393,7 @@ class MapView(Widget):
         else:
             super(MapView, self).remove_widget(widget)
 
-    def on_map_relocated(self, zoom, lat, lon):
+    def on_map_relocated(self, zoom, coord):
         pass
 
     def animated_diff_scale_at(self, d, x, y):
@@ -453,7 +475,7 @@ class MapView(Widget):
         self.lat = self.map_source.get_lat(zoom, self.center_y - self._scatter.y - self.delta_y)
         for layer in self._layers:
             layer.reposition()
-        self.dispatch("on_map_relocated", zoom, self.lon, self.lat)
+        self.dispatch("on_map_relocated", zoom, Coordinate(self.lon, self.lat))
 
         if self._need_redraw_full:
             self._need_redraw_full = False
