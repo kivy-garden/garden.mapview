@@ -4,6 +4,7 @@ __all__ = ["MapView", "MapMarker", "MapLayer", "MarkerMapLayer"]
 
 from os.path import join, dirname
 from kivy.clock import Clock
+from kivy.metrics import dp
 from kivy.uix.widget import Widget
 from kivy.uix.image import Image
 from kivy.uix.scatter import Scatter
@@ -15,7 +16,7 @@ from kivy.lang import Builder
 from kivy.compat import string_types
 from math import ceil
 from mapview import MIN_LONGITUDE, MAX_LONGITUDE, MIN_LATITUDE, MAX_LATITUDE, \
-    CACHE_DIR, Coordinate
+    CACHE_DIR, Coordinate, Bbox
 from mapview.source import MapSource
 from mapview.utils import clamp
 
@@ -24,7 +25,7 @@ Builder.load_string("""
 <MapMarker>:
     size_hint: None, None
     source: root.default_marker_fn
-    size: dp(48) / self.scale, dp(48) / self.scale
+    size: dp(48), dp(48)
     allow_stretch: True
 
 <MapView>:
@@ -105,8 +106,6 @@ class MapMarker(Image):
     """Longitude of the marker
     """
 
-    scale = NumericProperty(1.)
-
     @property
     def default_marker_fn(self):
         return join(dirname(__file__), "icons", "marker.png")
@@ -125,25 +124,52 @@ class MapLayer(Widget):
         """
         pass
 
+    def unload(self):
+        """Called when the view want to completly unload the layer.
+        """
+        pass
+
 
 class MarkerMapLayer(MapLayer):
     """A map layer for :class:`MapMarker`
     """
 
+    def __init__(self, **kwargs):
+        self.markers = []
+        super(MarkerMapLayer, self).__init__(**kwargs)
+
+    def add_widget(self, marker):
+        self.markers.append(marker)
+        super(MarkerMapLayer, self).add_widget(marker)
+
+    def remove_widget(self, marker):
+        if marker in self.markers:
+            self.markers.remove(marker)
+        super(MarkerMapLayer, self).remove_widget(marker)
+
     def reposition(self):
         mapview = self.parent
         set_marker_position = self.set_marker_position
-        for marker in self.children:
-            marker.scale = mapview.scale
-            set_marker_position(mapview, marker)
+        bbox = mapview.get_bbox(dp(48))
+        for marker in self.markers:
+            if bbox.collide(marker.lat, marker.lon):
+                set_marker_position(mapview, marker)
+                if marker.parent:
+                    continue
+                super(MarkerMapLayer, self).add_widget(marker)
+            else:
+                if not marker.parent:
+                    continue
+                super(MarkerMapLayer, self).remove_widget(marker)
 
     def set_marker_position(self, mapview, marker):
-        dx = mapview.delta_x
-        dy = mapview.delta_y
-        x = mapview.map_source.get_x(mapview.zoom, marker.lat) + dx
-        y = mapview.map_source.get_y(mapview.zoom, marker.lon) + dy
+        x, y = mapview.get_window_xy_from(marker.lat, marker.lon, mapview.zoom)
         marker.x = int(x - marker.width * marker.anchor_x)
         marker.y = int(y - marker.height * marker.anchor_y)
+
+    def unload(self):
+        self.clear_widgets()
+        del self.markers[:]
 
 
 class MapViewScatter(Scatter):
@@ -197,15 +223,16 @@ class MapView(Widget):
     def scale(self):
         return self._scatter.scale
 
-    def get_bbox(self):
+    def get_bbox(self, margin=0):
         """Returns the bounding box from the bottom/left (lat1, lon1) to
-        top/right (lat2, lon2)
+        top/right (lat2, lon2).
         """
-        x1, y1 = self.to_local(0, 0)
-        x2, y2 = self.to_local(self.width / self.scale, self.height / self.scale)
+        x1, y1 = self.to_local(0 - margin, 0 - margin)
+        x2, y2 = self.to_local((self.width + margin) / self.scale,
+                               (self.height + margin) / self.scale)
         c1 = self.get_latlon_at(x1, y1)
         c2 = self.get_latlon_at(x2, y2)
-        return c1, c2
+        return Bbox((c1.lat, c1.lon, c2.lat, c2.lon))
 
     bbox = AliasProperty(get_bbox, None, bind=["lat", "lon", "_zoom"])
 
@@ -214,6 +241,16 @@ class MapView(Widget):
         It also cancel all the remaining downloads.
         """
         self.remove_all_tiles()
+
+    def get_window_xy_from(self, lat, lon, zoom):
+        """Returns the x/y position in the widget absolute coordinates
+        from a lat/lon"""
+        vx, vy = self.viewport_pos
+        x = self.map_source.get_x(zoom, lon) - vx
+        y = self.map_source.get_y(zoom, lat) - vy
+        x *= self.scale
+        y *= self.scale
+        return x, y
 
     def center_on(self, *args):
         """Center the map on the coordinate :class:`Coordinate`, or a (lat, lon)
@@ -311,15 +348,26 @@ class MapView(Widget):
         """
         marker.detach()
 
-    def add_layer(self, layer):
-        """Add a new layer to update at the same time the base tile layer
+    def add_layer(self, layer, mode="window"):
+        """Add a new layer to update at the same time the base tile layer.
+        mode can be either "scatter" or "window". If "scatter", it means the
+        layer will be within the scatter transformation. It's perfect if you
+        want to display path / shape, but not for text.
+        If "window", it will have no transformation. You need to position the
+        widget yourself: think as Z-sprite / billboard.
+        Defaults to "window".
         """
+        assert(mode in ("scatter", "window"))
         if self._default_marker_layer is None and \
             isinstance(layer, MarkerMapLayer):
             self._default_marker_layer = layer
         self._layers.append(layer)
         c = self.canvas
-        self.canvas = self.canvas_layers
+        if mode == "scatter":
+            self.canvas = self.canvas_layers
+        else:
+            self.canvas = self.canvas_layers_out
+        layer.canvas_parent = self.canvas
         super(MapView, self).add_widget(layer)
         self.canvas = c
 
@@ -327,7 +375,7 @@ class MapView(Widget):
         """Remove the layer
         """
         self._layers.remove(layer)
-        self.canvas = self.canvas_layers
+        self.canvas = layer.canvas_parent
         super(MapView, self).remove_widget(layer)
         self.canvas = c
 
@@ -358,6 +406,8 @@ class MapView(Widget):
         with self._scatter.canvas:
             self.canvas_map = Canvas()
             self.canvas_layers = Canvas()
+        with self.canvas:
+            self.canvas_layers_out = Canvas()
         self._scale_target_anim = False
         self._scale_target = 1.
         Clock.schedule_interval(self._animate_color, 1 / 60.)

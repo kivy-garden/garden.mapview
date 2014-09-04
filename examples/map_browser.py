@@ -30,8 +30,8 @@ RelativeLayout:
 
     MapView:
         id: mapview
-        lon: 50.6394
-        lat: 3.057
+        lat: 50.6394
+        lon: 3.057
         zoom: 8
         #size_hint: .5, .5
         #pos_hint: {"x": .25, "y": .25}
@@ -40,12 +40,12 @@ RelativeLayout:
         #on_map_relocated: mapview3.sync_to(self)
 
         MapMarker:
-            lon: 50.6394
-            lat: 3.057
+            lat: 50.6394
+            lon: 3.057
 
         MapMarker
-            lon: -33.867
-            lat: 151.206
+            lat: -33.867
+            lon: 151.206
 
     Toolbar:
         top: root.top
