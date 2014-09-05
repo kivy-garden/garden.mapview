@@ -1,6 +1,6 @@
 # coding=utf-8
 
-__all__ = ["MapView", "MapMarker", "MapLayer", "MarkerMapLayer"]
+__all__ = ["MapView", "MapMarker", "MapMarkerPopup", "MapLayer", "MarkerMapLayer"]
 
 from os.path import join, dirname
 from kivy.clock import Clock
@@ -10,7 +10,7 @@ from kivy.uix.image import Image
 from kivy.uix.scatter import Scatter
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.properties import NumericProperty, ObjectProperty, ListProperty, \
-    AliasProperty
+    AliasProperty, BooleanProperty
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.graphics.transformation import Matrix
 from kivy.lang import Builder
@@ -66,8 +66,16 @@ Builder.load_string("""
 <MapViewScatter>:
     auto_bring_to_front: False
     do_rotation: False
-    scale_min: 0.5
-    scale_max: 2.
+    scale_min: 0.2
+    scale_max: 3.
+
+<MapMarkerPopup>:
+    RelativeLayout:
+        id: placeholder
+        y: root.top
+        center_x: root.center_x
+        size: root.popup_size
+
 """)
 
 
@@ -111,6 +119,38 @@ class MapMarker(ButtonBehavior, Image):
     @property
     def default_marker_fn(self):
         return join(dirname(__file__), "icons", "marker.png")
+
+
+class MapMarkerPopup(MapMarker):
+    is_open = BooleanProperty(False)
+    placeholder = ObjectProperty(None)
+    popup_size = ListProperty([100, 100])
+
+    def add_widget(self, widget):
+        if not self.placeholder:
+            self.placeholder = widget
+            if self.is_open:
+                super(MapMarkerPopup, self).add_widget(self.placeholder)
+        else:
+            self.placeholder.add_widget(widget)
+
+    def remove_widget(self, widget):
+        if widget is not self.placeholder:
+            self.placeholder.remove_widget(widget)
+        else:
+            super(MarkerMapLayer, self).remove_widget(widget)
+
+    def on_is_open(self, *args):
+        self.refresh_open_status()
+
+    def on_release(self, *args):
+        self.is_open = not self.is_open
+
+    def refresh_open_status(self):
+        if not self.is_open and self.placeholder.parent:
+            super(MapMarkerPopup, self).remove_widget(self.placeholder)
+        elif self.is_open and not self.placeholder.parent:
+            super(MapMarkerPopup, self).add_widget(self.placeholder)
 
 
 class MapLayer(Widget):
@@ -261,8 +301,8 @@ class MapView(Widget):
         zoom = self._zoom
 
         if len(args) == 1 and isinstance(args[0], Coordinate):
-            lon = coord.lon
             lat = coord.lat
+            lon = coord.lon
         elif len(args) == 2:
             lat, lon = args
         else:
@@ -318,7 +358,7 @@ class MapView(Widget):
         x = self.map_source.get_x(zoom, self.lon) - self.delta_x
         y = self.map_source.get_y(zoom, self.lat) - self.delta_y
         self.set_zoom_at(zoom, x, y)
-        self.center_on(self.lon, self.lat)
+        self.center_on(self.lat, self.lon)
 
     def get_latlon_at(self, x, y, zoom=None):
         """Return the current :class:`Coordinate` within the (x, y) widget
@@ -724,11 +764,11 @@ class MapView(Widget):
     def on_size(self, instance, size):
         for layer in self._layers:
             layer.size = size
-        self.center_on(self.lon, self.lat)
+        self.center_on(self.lat, self.lon)
         self.trigger_update(True)
 
     def on_pos(self, instance, pos):
-        self.center_on(self.lon, self.lat)
+        self.center_on(self.lat, self.lon)
         self.trigger_update(True)
 
     def on_map_source(self, instance, source):

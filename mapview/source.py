@@ -7,6 +7,7 @@ from math import cos, ceil, log, tan, pi, atan, exp
 from mapview import MIN_LONGITUDE, MAX_LONGITUDE, MIN_LATITUDE, MAX_LATITUDE
 from mapview.downloader import Downloader
 from mapview.utils import clamp
+import hashlib
 
 
 class MapSource(object):
@@ -47,11 +48,14 @@ class MapSource(object):
 
     def __init__(self,
         url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        cache_key="osm", min_zoom=0, max_zoom=19, tile_size=256,
+        cache_key=None, min_zoom=0, max_zoom=19, tile_size=256,
         image_ext="png",
         attribution="© OpenStreetMap contributors",
         subdomains="abc"):
         super(MapSource, self).__init__()
+        if cache_key is None:
+            # possible cache hit, but very unlikely
+            cache_key = hashlib.sha224(url).hexdigest()[:10]
         self.url = url
         self.cache_key = cache_key
         self.min_zoom = min_zoom
