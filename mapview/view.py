@@ -65,7 +65,8 @@ Builder.load_string("""
 <MapViewScatter>:
     auto_bring_to_front: False
     do_rotation: False
-    scale_min: 0.1
+    scale_min: 0.5
+    scale_max: 2.
 """)
 
 
@@ -475,6 +476,7 @@ class MapView(Widget):
 
     def scale_at(self, scale, x, y):
         scatter = self._scatter
+        scale = clamp(scale, scatter.scale_min, scatter.scale_max)
         rescale = scale * 1.0 / scatter.scale
         scatter.apply_transform(Matrix().scale(rescale, rescale, rescale),
                              post_multiply=True,
@@ -500,7 +502,7 @@ class MapView(Widget):
         zoom = self._zoom
         scatter = self._scatter
         scale = scatter.scale
-        if scale > 2.:
+        if scale >= 2.:
             zoom += 1
             scale /= 2.
         elif scale < 1:
