@@ -65,10 +65,6 @@ RelativeLayout:
             text: "Longitude: {}".format(mapview.lon)
         Label:
             text: "Latitude: {}".format(mapview.lat)
-    Toolbar:
-        y: "48dp"
-        Label:
-            text: "Bbox: {}".format(mapview.bbox)
     """)
 
 runTouchApp(root)
