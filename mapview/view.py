@@ -8,6 +8,7 @@ from kivy.metrics import dp
 from kivy.uix.widget import Widget
 from kivy.uix.image import Image
 from kivy.uix.scatter import Scatter
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.properties import NumericProperty, ObjectProperty, ListProperty, \
     AliasProperty
 from kivy.graphics import Canvas, Color, Rectangle
@@ -25,7 +26,7 @@ Builder.load_string("""
 <MapMarker>:
     size_hint: None, None
     source: root.default_marker_fn
-    size: dp(48), dp(48)
+    size: map(dp, self.texture_size)
     allow_stretch: True
 
 <MapView>:
@@ -85,7 +86,7 @@ class Tile(Rectangle):
         self.state = "need-animation"
 
 
-class MapMarker(Image):
+class MapMarker(ButtonBehavior, Image):
     """A marker on a map, that must be used on a :class:`MapMarker`
     """
 
