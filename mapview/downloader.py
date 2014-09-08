@@ -22,8 +22,9 @@ class Downloader(object):
             Downloader._instance = Downloader()
         return Downloader._instance
 
-    def __init__(self, max_workers=5):
+    def __init__(self, max_workers=5, cap_time=0.064):
         super(Downloader, self).__init__()
+        self.cap_time = cap_time
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         self._futures = []
         Clock.schedule_interval(self._check_executor, 1 / 60.)
@@ -80,7 +81,7 @@ class Downloader(object):
 
                 # capped executor in time, in order to prevent too much slowiness.
                 # seems to works quite great with big zoom-in/out
-                if time() - start > 120:
+                if time() - start > self.cap_time:
                     break
         except TimeoutError:
             pass
