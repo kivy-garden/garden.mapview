@@ -55,7 +55,7 @@ class MapSource(object):
         super(MapSource, self).__init__()
         if cache_key is None:
             # possible cache hit, but very unlikely
-            cache_key = hashlib.sha224(url).hexdigest()[:10]
+            cache_key = hashlib.sha224(url.encode("utf8")).hexdigest()[:10]
         self.url = url
         self.cache_key = cache_key
         self.min_zoom = min_zoom
