@@ -42,11 +42,7 @@ from kivy.app import App
 
 class MapViewApp(App):
     def build(self):
-        mapview = MapView(zoom=19)
-        # center the current view to Lille, France
-        mapview.center_on(50.6394, 3.057)
-        # or set a zoom at a position on the screen
-        mapview.set_zoom_at(18, 50., 50.)
+        mapview = MapView(zoom=11, lat=50.6394, lon=3.057)
         return mapview
 
 MapViewApp().run()
