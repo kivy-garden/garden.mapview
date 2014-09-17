@@ -26,7 +26,7 @@ Builder.load_string("""
 <MapMarker>:
     size_hint: None, None
     source: root.default_marker_fn
-    size: map(dp, self.texture_size)
+    size: list(map(dp, self.texture_size))
     allow_stretch: True
 
 <MapView>:
@@ -658,8 +658,8 @@ class MapView(Widget):
                 tile.pos = (tile_x * size + self.delta_x, tile_y * size + self.delta_y)
 
         # Load new tiles if needed
-        x = tile_x_first + x_count / 2 - 1
-        y = tile_y_first + y_count / 2 - 1
+        x = tile_x_first + x_count // 2 - 1
+        y = tile_y_first + y_count // 2 - 1
         arm_max = max(x_count, y_count) + 2
         arm_size = 1
         turn = 0
