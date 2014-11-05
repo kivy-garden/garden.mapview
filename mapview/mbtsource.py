@@ -29,10 +29,10 @@ class MBTilesMapSource(MapSource):
         metadata = dict(c.execute("SELECT * FROM metadata"))
         self.min_zoom = int(metadata["minzoom"])
         self.max_zoom = int(metadata["maxzoom"])
-        self.attribution = metadata["attribution"]
+        self.attribution = metadata.get("attribution", "")
         center = metadata["center"].split(",")
-        self.default_lat = float(center[0])
-        self.default_lon = float(center[1])
+        self.default_lon = float(center[0])
+        self.default_lat = float(center[1])
         self.default_zoom = int(center[2])
 
     def fill_tile(self, tile):
