@@ -66,13 +66,15 @@ class GeoJsonMapLayer(MapLayer):
     def _geojson_part_f(self, feature):
         properties = feature["properties"]
         geometry = feature["geometry"]
-        graphics = self._geojson_part_geometry(geometry)
+        graphics = self._geojson_part_geometry(geometry, properties)
         for g in graphics:
             self.canvas.add(g)
 
-    def _geojson_part_geometry(self, geometry):
+    def _geojson_part_geometry(self, geometry, properties):
         from kivy.graphics import Mesh, Line, Color
         from kivy.graphics.tesselator import Tesselator, WINDING_ODD, TYPE_POLYGONS
+        from kivy.utils import get_color_from_hex
+        from kivy.metrics import dp
         tp = geometry["type"]
         graphics = []
         if tp == "Polygon":
@@ -90,15 +92,18 @@ class GeoJsonMapLayer(MapLayer):
                     vertices=vertices, indices=indices,
                     mode="triangle_fan"))
 
+        elif tp == "LineString":
+            stroke = get_color_from_hex(properties.get("stroke", "#ffffff"))
+            stroke_width = dp(properties.get("stroke-width"))
+            xy = list(self._lonlat_to_xy(geometry["coordinates"]))
+            xy = flatten(xy)
+            graphics.append(Color(*stroke))
+            graphics.append(Line(points=xy, width=stroke_width))
+
         return graphics
 
     def _lonlat_to_xy(self, lonlats):
         view = self.parent
-        map_source = view.map_source
         zoom = view.zoom
-        dx = view.delta_x
-        dy = view.delta_y
         for lon, lat in lonlats:
-            x = map_source.get_x(zoom, lon) + dx
-            y = map_source.get_y(zoom, lat) + dy
-            yield x, y
+            yield view.get_window_xy_from(lat, lon, zoom)
