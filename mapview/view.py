@@ -247,6 +247,10 @@ class MapView(Widget):
     """Provider of the map, default to a empty :class:`MapSource`.
     """
 
+    double_tap_zoom = BooleanProperty(False)
+    """If True, this will activate the double-tap to zoom.
+    """
+
     delta_x = NumericProperty(0)
     delta_y = NumericProperty(0)
     background_color = ListProperty([181 / 255., 208 / 255., 208 / 255., 1])
@@ -530,7 +534,7 @@ class MapView(Widget):
             d = 1 if touch.button == "scrollup" else -1
             self.animated_diff_scale_at(d * 0.25, *touch.pos)
             return True
-        elif touch.is_double_tap:
+        elif touch.is_double_tap and self.double_tap_zoom:
             self.animated_diff_scale_at(1, *touch.pos)
             return True
         return super(MapView, self).on_touch_down(touch)
