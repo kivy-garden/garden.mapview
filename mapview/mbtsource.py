@@ -30,10 +30,20 @@ class MBTilesMapSource(MapSource):
         self.min_zoom = int(metadata["minzoom"])
         self.max_zoom = int(metadata["maxzoom"])
         self.attribution = metadata.get("attribution", "")
-        center = metadata["center"].split(",")
-        self.default_lon = float(center[0])
-        self.default_lat = float(center[1])
-        self.default_zoom = int(center[2])
+        self.bounds = bounds = None
+        cx = cy = 0.
+        cz = 5
+        if "bounds" in metadata:
+            self.bounds = bounds = map(float, metadata["bounds"].split(","))
+        if "center" in metadata:
+            cx, cy, cz = map(float, metadata["center"].split(","))
+        elif self.bounds:
+            cx = (bounds[2] + bounds[0]) / 2.
+            cy = (bounds[3] + bounds[1]) / 2.
+            cz = self.min_zoom
+        self.default_lon = cx
+        self.default_lat = cy
+        self.default_zoom = int(cz)
 
     def fill_tile(self, tile):
         if tile.state == "done":

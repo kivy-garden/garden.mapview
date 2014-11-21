@@ -2,3 +2,4 @@
 *.swp
 docs/build/*
 cache/*
+examples/cache/*
