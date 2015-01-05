@@ -70,16 +70,10 @@ class MBTilesMapSource(MapSource):
         # no-file loading
         # XXX this must be pushed in kivy somehow.
         # Not all loaders supports buffer-based loading, so it might just fail.
-        im = None
         data = io.BytesIO(row[0])
-        for loader in ImageLoader.loaders:
-            try:
-                # try loading raw image
-                im = loader(data, nocache=True)
-                break
-            except:
-                import traceback
-                traceback.print_exc()
+        im = CoreImage(data, ext='png',
+                filename="{}.{}.{}.png".format(tile.zoom, tile.tile_x,
+                    tile.tile_y))
 
         if im is None:
             tile.state = "done"
@@ -88,7 +82,5 @@ class MBTilesMapSource(MapSource):
         return self._load_tile_done, (tile, im, )
 
     def _load_tile_done(self, tile, im):
-        # XXX internal kivy cache doesn't support ByteIO object yet. >_>
-        im.filename = "{}.{}.{}.png".format(tile.zoom, tile.tile_x, tile.tile_y)
         tile.texture = im.texture
         tile.state = "need-animation"
