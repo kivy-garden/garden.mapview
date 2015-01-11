@@ -305,6 +305,7 @@ class MapView(Widget):
         zoom = self._zoom
 
         if len(args) == 1 and isinstance(args[0], Coordinate):
+            coord = args[0]
             lat = coord.lat
             lon = coord.lon
         elif len(args) == 2:
@@ -457,6 +458,8 @@ class MapView(Widget):
         self._scale_target_anim = False
         self._scale_target = 1.
         Clock.schedule_interval(self._animate_color, 1 / 60.)
+        self.lat = kwargs.get("lat", self.lat)
+        self.lon = kwargs.get("lon", self.lon)
         super(MapView, self).__init__(**kwargs)
 
     def _animate_color(self, dt):
