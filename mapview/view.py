@@ -10,7 +10,7 @@ from kivy.uix.image import Image
 from kivy.uix.scatter import Scatter
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.properties import NumericProperty, ObjectProperty, ListProperty, \
-    AliasProperty, BooleanProperty
+    AliasProperty, BooleanProperty, StringProperty
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.graphics.transformation import Matrix
 from kivy.lang import Builder
@@ -25,7 +25,7 @@ from mapview.utils import clamp
 Builder.load_string("""
 <MapMarker>:
     size_hint: None, None
-    source: root.default_marker_fn
+    source: root.source
     size: list(map(dp, self.texture_size))
     allow_stretch: True
 
@@ -116,9 +116,9 @@ class MapMarker(ButtonBehavior, Image):
     """Longitude of the marker
     """
 
-    @property
-    def default_marker_fn(self):
-        return join(dirname(__file__), "icons", "marker.png")
+    source = StringProperty(join(dirname(__file__), "icons", "marker.png"))
+    """Source of the marker, defaults to our own marker.png
+    """
 
 
 class MapMarkerPopup(MapMarker):
