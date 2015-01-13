@@ -68,9 +68,12 @@ class MBTilesMapSource(MapSource):
             return
 
         # no-file loading
-        # XXX this must be pushed in kivy somehow.
-        # Not all loaders supports buffer-based loading, so it might just fail.
-        data = io.BytesIO(row[0])
+        try:
+            data = io.BytesIO(row[0])
+        except:
+            # android issue, "buffer" does not have the buffer interface
+            # ie row[0] buffer is not compatible with BytesIO on Android??
+            data = io.BytesIO(bytes(row[0]))
         im = CoreImage(data, ext='png',
                 filename="{}.{}.{}.png".format(tile.zoom, tile.tile_x,
                     tile.tile_y))
