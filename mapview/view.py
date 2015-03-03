@@ -192,17 +192,20 @@ class MarkerMapLayer(MapLayer):
     def reposition(self):
         mapview = self.parent
         set_marker_position = self.set_marker_position
-        bbox = mapview.get_bbox(dp(48))
-        for marker in self.markers:
+        bbox = None
+        latest_bbox_size = dp(48)
+        # reposition the markers depending the latitude
+        markers = sorted(self.markers, key=lambda x: -x.lat)
+        for marker in markers:
+            super(MarkerMapLayer, self).remove_widget(marker)
+            if not bbox or latest_bbox_size != max(marker.size):
+                latest_bbox_size = max(marker.size)
+                bbox = mapview.get_bbox(latest_bbox_size)
             if bbox.collide(marker.lat, marker.lon):
                 set_marker_position(mapview, marker)
                 if marker.parent:
                     continue
                 super(MarkerMapLayer, self).add_widget(marker)
-            else:
-                if not marker.parent:
-                    continue
-                super(MarkerMapLayer, self).remove_widget(marker)
 
     def set_marker_position(self, mapview, marker):
         x, y = mapview.get_window_xy_from(marker.lat, marker.lon, mapview.zoom)
