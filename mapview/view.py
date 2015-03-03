@@ -196,16 +196,15 @@ class MarkerMapLayer(MapLayer):
         latest_bbox_size = dp(48)
         # reposition the markers depending the latitude
         markers = sorted(self.markers, key=lambda x: -x.lat)
+        margin = max((max(marker.size) for marker in markers))
+        bbox = mapview.get_bbox(margin)
         for marker in markers:
-            super(MarkerMapLayer, self).remove_widget(marker)
-            if not bbox or latest_bbox_size != max(marker.size):
-                latest_bbox_size = max(marker.size)
-                bbox = mapview.get_bbox(latest_bbox_size)
             if bbox.collide(marker.lat, marker.lon):
                 set_marker_position(mapview, marker)
-                if marker.parent:
-                    continue
-                super(MarkerMapLayer, self).add_widget(marker)
+                if not marker.parent:
+                    super(MarkerMapLayer, self).add_widget(marker)
+            else:
+                super(MarkerMapLayer, self).remove_widget(marker)
 
     def set_marker_position(self, mapview, marker):
         x, y = mapview.get_window_xy_from(marker.lat, marker.lon, mapview.zoom)
@@ -283,7 +282,10 @@ class MapView(Widget):
 
     @property
     def scale(self):
-        return self._scatter.scale
+        if self._invalid_scale:
+            self._invalid_scale = False
+            self._scale = self._scatter.scale
+        return self._scale
 
     def get_bbox(self, margin=0):
         """Returns the bounding box from the bottom/left (lat1, lon1) to
@@ -308,10 +310,12 @@ class MapView(Widget):
         """Returns the x/y position in the widget absolute coordinates
         from a lat/lon"""
         vx, vy = self.viewport_pos
-        x = self.map_source.get_x(zoom, lon) - vx
-        y = self.map_source.get_y(zoom, lat) - vy
-        x *= self.scale
-        y *= self.scale
+        scale = self.scale
+        ms = self.map_source
+        x = ms.get_x(zoom, lon) - vx
+        y = ms.get_y(zoom, lat) - vy
+        x *= scale
+        y *= scale
         return x, y
 
     def center_on(self, *args):
@@ -455,6 +459,7 @@ class MapView(Widget):
     def __init__(self, **kwargs):
         from kivy.base import EventLoop
         EventLoop.ensure_window()
+        self._invalid_scale = True
         self._tiles = []
         self._tiles_bg = []
         self._tilemap = {}
@@ -586,6 +591,7 @@ class MapView(Widget):
         return super(MapView, self).on_touch_up(touch)
 
     def on_transform(self, *args):
+        self._invalid_scale = True
         if self._transform_lock:
             return
         self._transform_lock = True
