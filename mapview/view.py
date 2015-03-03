@@ -251,10 +251,23 @@ class MapView(Widget):
     """If True, this will activate the double-tap to zoom.
     """
 
+    pause_on_action = BooleanProperty(True)
+    """Pause any map loading / tiles loading when an action is done.
+    This allow better performance on mobile, but can be safely deactivated on
+    desktop.
+    """
+
+    snap_to_zoom = BooleanProperty(True)
+    """When the user initiate a zoom, it will snap to the closest zoom for
+    better graphics. The map can be blur if the map is scaled between 2 zoom.
+    Default to True, even if it doesn't fully working yet.
+    """
+
     delta_x = NumericProperty(0)
     delta_y = NumericProperty(0)
     background_color = ListProperty([181 / 255., 208 / 255., 208 / 255., 1])
     _zoom = NumericProperty(0)
+    _pause = BooleanProperty(False)
 
     __events__ = ["on_map_relocated"]
 
@@ -457,6 +470,7 @@ class MapView(Widget):
             self.canvas_layers_out = Canvas()
         self._scale_target_anim = False
         self._scale_target = 1.
+        self._touch_count = 0
         Clock.schedule_interval(self._animate_color, 1 / 60.)
         self.lat = kwargs.get("lat", self.lat)
         self.lon = kwargs.get("lon", self.lon)
@@ -515,7 +529,10 @@ class MapView(Widget):
             self._scale_target -= diff
         self._scale_target_time -= dt
         self.diff_scale_at(diff, *self._scale_target_pos)
-        return self._scale_target != 0
+        ret = self._scale_target != 0
+        if not ret:
+            self._pause = False
+        return ret
 
     def diff_scale_at(self, d, x, y):
         scatter = self._scatter
@@ -533,14 +550,37 @@ class MapView(Widget):
     def on_touch_down(self, touch):
         if not self.collide_point(*touch.pos):
             return
+        if self.pause_on_action:
+            self._pause = True
         if "button" in touch.profile and touch.button in ("scrolldown", "scrollup"):
             d = 1 if touch.button == "scrollup" else -1
-            self.animated_diff_scale_at(d * 0.25, *touch.pos)
+            self.animated_diff_scale_at(d, *touch.pos)
             return True
         elif touch.is_double_tap and self.double_tap_zoom:
             self.animated_diff_scale_at(1, *touch.pos)
             return True
+        touch.grab(self)
+        self._touch_count += 1
+        if self._touch_count == 1:
+            self._touch_zoom = (self.zoom, self.scale)
         return super(MapView, self).on_touch_down(touch)
+
+    def on_touch_up(self, touch):
+        if touch.grab_current == self:
+            touch.ungrab(self)
+            self._touch_count -= 1
+            if self._touch_count == 0:
+                # animate to the closest zoom
+                zoom, scale = self._touch_zoom
+                cur_zoom = self.zoom
+                cur_scale = self.scale
+                if cur_zoom < zoom or cur_scale < scale:
+                    self.animated_diff_scale_at(1. - cur_scale, *touch.pos)
+                elif cur_zoom > zoom or cur_scale > scale:
+                    self.animated_diff_scale_at(2. - cur_scale, *touch.pos)
+                self._pause = False
+            return True
+        return super(MapView, self).on_touch_up(touch)
 
     def on_transform(self, *args):
         if self._transform_lock:
@@ -563,6 +603,10 @@ class MapView(Widget):
         else:
             self.trigger_update(False)
         self._transform_lock = False
+
+    def on__pause(self, instance, value):
+        if not value:
+            self.trigger_update(True)
 
     def trigger_update(self, full):
         self._need_redraw_full = full or self._need_redraw_full
@@ -702,7 +746,8 @@ class MapView(Widget):
         tile.pos = (x * size + self.delta_x, y * size + self.delta_y)
         tile.map_source = map_source
         tile.state = "loading"
-        map_source.fill_tile(tile)
+        if not self._pause:
+            map_source.fill_tile(tile)
         self.canvas_map.add(tile.g_color)
         self.canvas_map.add(tile)
         self._tiles.append(tile)

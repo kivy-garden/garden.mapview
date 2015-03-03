@@ -24,6 +24,7 @@ class Downloader(object):
 
     def __init__(self, max_workers=5, cap_time=0.064):
         super(Downloader, self).__init__()
+        self.is_paused = False
         self.cap_time = cap_time
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         self._futures = []
