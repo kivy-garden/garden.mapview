@@ -596,6 +596,7 @@ class MapView(Widget):
             return
         self._transform_lock = True
         # recalculate viewport
+        map_source = self.map_source
         zoom = self._zoom
         scatter = self._scatter
         scale = scatter.scale
@@ -611,6 +612,31 @@ class MapView(Widget):
             self.trigger_update(True)
         else:
             self.trigger_update(False)
+
+        if map_source.bounds:
+            # if the map_source have any constraints, apply them here.
+            min_lon, min_lat, max_lon, max_lat = map_source.bounds
+            xmin = map_source.get_x(zoom, min_lon)
+            xmax = map_source.get_x(zoom, max_lon)
+            ymin = map_source.get_y(zoom, min_lat)
+            ymax = map_source.get_y(zoom, max_lat)
+
+            mx, my = self._scatter.to_local(*self.center)
+            mx -= self.delta_x
+            my -= self.delta_y
+            if mx < xmin:
+                x_diff = xmin - mx
+                self._scatter.x -= x_diff
+            elif mx > xmax:
+                x_diff = xmax - mx
+                self._scatter.x -= x_diff
+            if my < ymin:
+                y_diff = ymin - my
+                self._scatter.y -= y_diff
+            elif my > ymax:
+                y_diff = ymax - my
+                self._scatter.y -= y_diff
+
         self._transform_lock = False
 
     def on__pause(self, instance, value):
