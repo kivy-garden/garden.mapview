@@ -335,6 +335,8 @@ class MapView(Widget):
         y = map_source.get_y(zoom, lat) - self.center_y / scale
         self.delta_x = -x
         self.delta_y = -y
+        self.lon = lon
+        self.lat = lat
         self._scatter.pos = 0, 0
         self.trigger_update(True)
 
