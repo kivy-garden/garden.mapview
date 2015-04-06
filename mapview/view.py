@@ -439,6 +439,7 @@ class MapView(Widget):
     def remove_layer(self, layer):
         """Remove the layer
         """
+        c = self.canvas
         self._layers.remove(layer)
         self.canvas = layer.canvas_parent
         super(MapView, self).remove_widget(layer)
@@ -761,7 +762,6 @@ class MapView(Widget):
             turn += 1
 
     def load_tile(self, x, y, size, zoom):
-        map_source = self.map_source
         if self.tile_in_tile_map(x, y) or zoom != self._zoom:
             return
         self.load_tile_for_source(self.map_source, 1., size, x, y, zoom)
@@ -802,8 +802,8 @@ class MapView(Widget):
             btiles.append(tile)
 
         # clear the canvas
-        self.canvas_map.clear()
-        self.canvas_map.before.clear()
+        canvas_map.clear()
+        canvas_map.before.clear()
         self._tilemap = {}
 
         # unsure if it's really needed, i personnally didn't get issues right now
