@@ -657,11 +657,13 @@ class MapView(Widget):
 
     def do_update(self, dt):
         zoom = self._zoom
-        self.lon = self.map_source.get_lon(zoom, self.center_x - self._scatter.x - self.delta_x)
-        self.lat = self.map_source.get_lat(zoom, self.center_y - self._scatter.y - self.delta_y)
+        self.lon = self.map_source.get_lon(zoom,
+                (self.center_x - self._scatter.x) / self.scale - self.delta_x)
+        self.lat = self.map_source.get_lat(zoom,
+                (self.center_y - self._scatter.y) / self.scale - self.delta_y)
+        self.dispatch("on_map_relocated", zoom, Coordinate(self.lon, self.lat))
         for layer in self._layers:
             layer.reposition()
-        self.dispatch("on_map_relocated", zoom, Coordinate(self.lon, self.lat))
 
         if self._need_redraw_full:
             self._need_redraw_full = False
