@@ -120,6 +120,14 @@ class MapMarker(ButtonBehavior, Image):
     """Source of the marker, defaults to our own marker.png
     """
 
+    # (internal) reference to its layer
+    _layer = None
+
+    def detach(self):
+        if self._layer:
+            self._layer.remove_widget(self)
+            self._layer = None
+
 
 class MapMarkerPopup(MapMarker):
     is_open = BooleanProperty(False)
@@ -181,10 +189,12 @@ class MarkerMapLayer(MapLayer):
         super(MarkerMapLayer, self).__init__(**kwargs)
 
     def add_widget(self, marker):
+        marker._layer = self
         self.markers.append(marker)
         super(MarkerMapLayer, self).add_widget(marker)
 
     def remove_widget(self, marker):
+        marker._layer = None
         if marker in self.markers:
             self.markers.remove(marker)
         super(MarkerMapLayer, self).remove_widget(marker)
