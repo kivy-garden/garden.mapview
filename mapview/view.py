@@ -281,6 +281,7 @@ class MapView(Widget):
     background_color = ListProperty([181 / 255., 208 / 255., 208 / 255., 1])
     _zoom = NumericProperty(0)
     _pause = BooleanProperty(False)
+    _scale = 1.
 
     __events__ = ["on_map_relocated"]
 
@@ -293,15 +294,16 @@ class MapView(Widget):
 
     @property
     def scale(self):
-        return self._scatter.scale
+        return self._scale
 
     def get_bbox(self, margin=0):
         """Returns the bounding box from the bottom/left (lat1, lon1) to
         top/right (lat2, lon2).
         """
+        scale = self._scale
         x1, y1 = self.to_local(0 - margin, 0 - margin)
-        x2, y2 = self.to_local((self.width + margin) / self.scale,
-                               (self.height + margin) / self.scale)
+        x2, y2 = self.to_local((self.width + margin) / scale,
+                               (self.height + margin) / scale)
         c1 = self.get_latlon_at(x1, y1)
         c2 = self.get_latlon_at(x2, y2)
         return Bbox((c1.lat, c1.lon, c2.lat, c2.lon))
@@ -317,11 +319,12 @@ class MapView(Widget):
     def get_window_xy_from(self, lat, lon, zoom):
         """Returns the x/y position in the widget absolute coordinates
         from a lat/lon"""
+        scale = self._scale
         vx, vy = self.viewport_pos
         x = self.map_source.get_x(zoom, lon) - vx
         y = self.map_source.get_y(zoom, lat) - vy
-        x *= self.scale
-        y *= self.scale
+        x *= scale
+        y *= scale
         return x, y
 
     def center_on(self, *args):
@@ -578,7 +581,7 @@ class MapView(Widget):
         touch.grab(self)
         self._touch_count += 1
         if self._touch_count == 1:
-            self._touch_zoom = (self.zoom, self.scale)
+            self._touch_zoom = (self.zoom, self._scale)
         return super(MapView, self).on_touch_down(touch)
 
     def on_touch_up(self, touch):
@@ -589,7 +592,7 @@ class MapView(Widget):
                 # animate to the closest zoom
                 zoom, scale = self._touch_zoom
                 cur_zoom = self.zoom
-                cur_scale = self.scale
+                cur_scale = self._scale
                 if cur_zoom < zoom or cur_scale < scale:
                     self.animated_diff_scale_at(1. - cur_scale, *touch.pos)
                 elif cur_zoom > zoom or cur_scale > scale:
@@ -645,6 +648,7 @@ class MapView(Widget):
                 self._scatter.y -= y_diff
 
         self._transform_lock = False
+        self._scale = self._scatter.scale
 
     def on__pause(self, instance, value):
         if not value:
@@ -657,10 +661,11 @@ class MapView(Widget):
 
     def do_update(self, dt):
         zoom = self._zoom
+        scale = self._scale
         self.lon = self.map_source.get_lon(zoom,
-                (self.center_x - self._scatter.x) / self.scale - self.delta_x)
+                (self.center_x - self._scatter.x) / scale - self.delta_x)
         self.lat = self.map_source.get_lat(zoom,
-                (self.center_y - self._scatter.y) / self.scale - self.delta_y)
+                (self.center_y - self._scatter.y) / scale - self.delta_y)
         self.dispatch("on_map_relocated", zoom, Coordinate(self.lon, self.lat))
         for layer in self._layers:
             layer.reposition()
@@ -676,7 +681,7 @@ class MapView(Widget):
         # return a tile-bbox for the zoom
         map_source = self.map_source
         size = map_source.dp_tile_size
-        scale = self.scale
+        scale = self._scale
 
         max_x_end = map_source.get_col_count(zoom)
         max_y_end = map_source.get_row_count(zoom)
