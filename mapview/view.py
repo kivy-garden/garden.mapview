@@ -403,9 +403,10 @@ class MapView(Widget):
         if zoom is None:
             zoom = self._zoom
         vx, vy = self.viewport_pos
+        scale = self._scale
         return Coordinate(
-            lat=self.map_source.get_lat(zoom, y + vy),
-            lon=self.map_source.get_lon(zoom, x + vx))
+            lat=self.map_source.get_lat(zoom, y / scale + vy),
+            lon=self.map_source.get_lon(zoom, x / scale + vx))
 
     def add_marker(self, marker, layer=None):
         """Add a marker into the layer. If layer is None, it will be added in
