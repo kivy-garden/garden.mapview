@@ -300,10 +300,9 @@ class MapView(Widget):
         """Returns the bounding box from the bottom/left (lat1, lon1) to
         top/right (lat2, lon2).
         """
-        scale = self._scale
         x1, y1 = self.to_local(0 - margin, 0 - margin)
-        x2, y2 = self.to_local((self.width + margin) / scale,
-                               (self.height + margin) / scale)
+        x2, y2 = self.to_local((self.width + margin),
+                               (self.height + margin))
         c1 = self.get_latlon_at(x1, y1)
         c2 = self.get_latlon_at(x2, y2)
         return Bbox((c1.lat, c1.lon, c2.lat, c2.lon))
