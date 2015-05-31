@@ -22,9 +22,6 @@ MapView is based on:
 Current limitations
 -------------------
 
-- :class:`MapMarker` are not yet selectable, it should come soon in a commit
-- :class:`MarkerMapLayer` doesn't hide :class:`MapMarker` that are outside the
-  map bounding box.
 - The API is still moving, it may contain errors.
 - Some providers can be slow or timeout. This is not an issue from MapView.
 - If a tile is not correctly downloaded or missing from the provider, the error
@@ -73,6 +70,8 @@ You can also change the providers by:
 
 API
 ---
+
+.. py:module:: mapview
 
 .. py:class:: Coordinate(lon, lat)
 
@@ -177,29 +176,84 @@ API
     A marker on the map, that must be used on a :class:`MapMarker`, or with
     :meth:`MapView.add_marker` or with :meth:`MapView.add_widget`
 
-    .. py:data:: anchor_x
+    :Events:
+        `on_press`: Fired when the MapMarker is pressed
+        `on_release`: Fired when the MapMarker is release
+
+    .. py:attribute:: anchor_x
 
         Anchor of the Marker on the X axis. Defaults to 0.5, means the anchor
         will be at the X center of the image
 
-    .. py:data:: anchor_y
+    .. py:attribute:: anchor_y
 
         Anchor of the marker on the Y axis. Defaults to 0, means the anchor
         will be at the Y bottom of the image
 
-    .. py:data:: lat
+    .. py:attribute:: lat
 
         Latitude of the marker
 
-    .. py:data:: lon
+    .. py:attribute:: lon
 
         Longitude of the marker
+
+    .. py:attribute:: source
+
+        Image source of the marker, defaults to `marker.png` within the mapview
+        package.
 
 
 .. py:class:: MapView
 
     MapView is a widget that control the map displaying, navigation and layers
     management.
+
+    :Available events:
+        `on_map_relocated`: called everytime the MapView change location
+
+    .. py:attribute:: lon
+
+        Longitude at the center of the widget, read-only.
+
+    .. py:attribute:: lat
+
+        Latitude at the center of the widget, read-only.
+
+    .. py:attribute:: zoom
+
+        Zoom of the MapView. Must be between :meth:`MapSource.get_min_zoom` and
+        :meth:`MapSource.get_max_zoom`. Default to 0
+
+    .. py:attribute:: map_source
+
+        Provider of the map, default to an empty :class:`MapSource`
+
+    .. py:attribute:: double_tap_zoom
+
+        If True, this will activate the double-tap to zoom.
+
+        Defaults to False.
+
+    .. py:attribute:: pause_on_action
+
+        Pause on any loading / tiles loading when an action is done. This allow
+        better performance on mobile, but can be safely deactivated on desktop.
+
+        Defaults to True.
+
+    .. py:attribute:: scale
+
+        Current scale of the internal scatter, read-only. This is usually not
+        used in user-side unless you're hacking mapview.
+
+    .. py:attribute:: snap_to_zoom
+
+        When the user initiate a zoom, it will snap to the closest zoom for
+        better graphics. The map can be blur if the map is scaled between 2
+        zoom.
+
+        Defaults to True, even if it doesn't fully working yet.
 
     .. py:method:: add_layer(layer)
 
@@ -222,6 +276,14 @@ API
 
         :param float lat: Latitude
         :param float lon: Longitude
+
+    .. py:method:: get_bbox(margin=0)
+
+        Returns the bounding box from the bottom-left to the top-right.
+
+        :param float margin: Optionnal margin to extend the Bbox bounds
+        :return: Bounding box
+        :rtype: :class:`Bbox`
 
     .. py:method:: get_latlon_at(x, y, zoom=None):
 
@@ -262,18 +324,48 @@ API
 
 .. py:class:: MapLayer
 
-    A map layer. It is repositionned everytime the :class:`MapView` is moved.
+    A map layer. It is repositioned everytime the :class:`MapView` is moved.
 
     .. py:method:: reposition()
 
         Function called when the :class:`MapView` is moved. You must recalculate
         the position of your children, and handle the visibility.
 
+    .. py:method:: unload()
+
+        Called when the view want to completely unload the layer.
+
 
 .. py:class:: MarkerMapLayer(MapLayer)
 
-    A map layer speciallized for handling :class:`MapMarker`.
+    A map layer specialized for handling :class:`MapMarker`.
 
+
+.. py:module:: mapview.mbtsource
+
+.. py:class:: MBTilesMapSource(MapSource)
+
+    Use a `Mbtiles <http://mbtiles.org>`_ as a source for a :class:`MapView`
+
+
+.. py:module:: mapview.geojson
+
+.. py:class:: GeoJsonMapLayer(MapLayer)
+
+    A Geojson :class:`MapLayer`.
+
+    **Experimental**, only Polygon and LineString feature are supported.
+    Marker are not yet implemented, due to lack of API for wiring Marker
+    selection back to you.
+
+    .. py:attribute:: source
+
+    A Geojson filename to load, defaults to None.
+
+    .. py:attribute:: geojson
+
+    A dictionary structured as a Geojson. This attribute contain the content
+    of a :attr:`source` if passed. You
 
 Indices and tables
 ==================
