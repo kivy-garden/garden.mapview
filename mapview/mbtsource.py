@@ -44,6 +44,8 @@ class MBTilesMapSource(MapSource):
         self.default_lon = cx
         self.default_lat = cy
         self.default_zoom = int(cz)
+        self.projection = metadata.get("projection", "")
+        self.is_xy = (self.projection == "xy")
 
     def fill_tile(self, tile):
         if tile.state == "done":
@@ -62,6 +64,7 @@ class MBTilesMapSource(MapSource):
             ("SELECT tile_data FROM tiles WHERE "
             "zoom_level=? AND tile_column=? AND tile_row=?"),
             (tile.zoom, tile.tile_x, tile.tile_y))
+        print "fetch", tile.zoom, tile.tile_x, tile.tile_y
         row = c.fetchone()
         if not row:
             tile.state = "done"
@@ -87,3 +90,23 @@ class MBTilesMapSource(MapSource):
     def _load_tile_done(self, tile, im):
         tile.texture = im.texture
         tile.state = "need-animation"
+
+    def get_x(self, zoom, lon):
+        if self.is_xy:
+            return lon
+        return super(MBTilesMapSource, self).get_x(zoom, lon)
+
+    def get_y(self, zoom, lat):
+        if self.is_xy:
+            return lat
+        return super(MBTilesMapSource, self).get_y(zoom, lat)
+
+    def get_lon(self, zoom, x):
+        if self.is_xy:
+            return x
+        return super(MBTilesMapSource, self).get_lon(zoom, x)
+
+    def get_lat(self, zoom, y):
+        if self.is_xy:
+            return y
+        return super(MBTilesMapSource, self).get_lat(zoom, y)
