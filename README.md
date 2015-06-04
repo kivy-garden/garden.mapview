@@ -31,6 +31,9 @@ you can use `futures`:
 pip install futures requests
 ```
 
+If you use it on Android / iOS, don't forget to add `openssl` as a requirements,
+otherwise you'll have an issue when importing `urllib3` from `requests`.
+
 # Usage
 
 This widget can be either used within Python or Kv. That's said, not
