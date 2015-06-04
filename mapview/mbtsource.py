@@ -64,7 +64,7 @@ class MBTilesMapSource(MapSource):
             ("SELECT tile_data FROM tiles WHERE "
             "zoom_level=? AND tile_column=? AND tile_row=?"),
             (tile.zoom, tile.tile_x, tile.tile_y))
-        print "fetch", tile.zoom, tile.tile_x, tile.tile_y
+        # print "fetch", tile.zoom, tile.tile_x, tile.tile_y
         row = c.fetchone()
         if not row:
             tile.state = "done"
