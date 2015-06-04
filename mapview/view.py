@@ -621,12 +621,16 @@ class MapView(Widget):
         elif scale < 1:
             zoom -= 1
             scale *= 2.
-        zoom = clamp(zoom, self.map_source.min_zoom, self.map_source.max_zoom)
+        zoom = clamp(zoom, map_source.min_zoom, map_source.max_zoom)
         if zoom != self._zoom:
             self.set_zoom_at(zoom, scatter.x, scatter.y, scale=scale)
             self.trigger_update(True)
         else:
-            self.trigger_update(False)
+            if zoom == map_source.min_zoom and scatter.scale < 1.:
+                scatter.scale = 1.
+                self.trigger_update(True)
+            else:
+                self.trigger_update(False)
 
         if map_source.bounds:
             self._apply_bounds()
