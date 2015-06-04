@@ -636,6 +636,7 @@ class MapView(Widget):
     def _apply_bounds(self):
         # if the map_source have any constraints, apply them here.
         map_source = self.map_source
+        zoom = self._zoom
         min_lon, min_lat, max_lon, max_lat = map_source.bounds
         xmin = map_source.get_x(zoom, min_lon)
         xmax = map_source.get_x(zoom, max_lon)
