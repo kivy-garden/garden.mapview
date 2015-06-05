@@ -271,7 +271,7 @@ class GeoJsonMapLayer(MapLayer):
                     continue
                 self._geojson_part_f(feature)
         elif tp == "Feature":
-            if geotype and feature["geometry"]["type"] == geotype:
+            if geotype and part["geometry"]["type"] == geotype:
                 self._geojson_part_f(part)
         else:
             # unhandled geojson part
