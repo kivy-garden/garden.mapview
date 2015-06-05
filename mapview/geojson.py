@@ -15,6 +15,7 @@ __all__ = ["GeoJsonMapLayer"]
 
 import json
 from kivy.properties import StringProperty, ObjectProperty
+from kivy.graphics import Canvas, PushMatrix, PopMatrix, MatrixInstruction, Translate, Scale
 from mapview.view import MapLayer
 from mapview.downloader import Downloader
 
@@ -28,18 +29,55 @@ class GeoJsonMapLayer(MapLayer):
     source = StringProperty()
     geojson = ObjectProperty()
     #features = ListProperty()
+    initial_zoom = None
+    first_time = True
+
+    def __init__(self, **kwargs):
+        super(GeoJsonMapLayer, self).__init__(**kwargs)
+        with self.canvas:
+            self.canvas_polygon = Canvas()
+            self.canvas_line = Canvas()
+        with self.canvas_polygon.before:
+            PushMatrix()
+            self.g_matrix = MatrixInstruction()
+            self.g_scale = Scale()
+            self.g_translate = Translate()
+        with self.canvas_polygon:
+            self.g_canvas_polygon = Canvas()
+        with self.canvas_polygon.after:
+            PopMatrix()
 
     def reposition(self):
-        if self.geojson:
-            print "Reload geojson"
-            self.on_geojson(self, self.geojson)
+        vx, vy = self.parent.delta_x, self.parent.delta_y
+        pzoom = self.parent.zoom
+        zoom = self.initial_zoom
+        if zoom is None:
+            self.initial_zoom = zoom = pzoom
+        if zoom != pzoom:
+            diff = 2 ** (pzoom - zoom)
+            vx /= diff
+            vy /= diff
+            self.g_scale.x = self.g_scale.y = diff
+        else:
+            self.g_scale.x = self.g_scale.y = 1.
+        self.g_translate.xy = vx, vy
+        self.g_matrix.matrix = self.parent._scatter.transform
 
-    def on_geojson(self, instance, geojson):
+        if self.geojson:
+            update = not self.first_time
+            self.on_geojson(self, self.geojson, update=update)
+            self.first_time = False
+
+    def on_geojson(self, instance, geojson, update=False):
         if self.parent is None:
             return
-        #self.features = []
-        self.canvas.clear()
-        self._geojson_part(geojson)
+        if not update:
+            # print "Reload geojson (polygon)"
+            self.g_canvas_polygon.clear()
+            self._geojson_part(geojson, geotype="Polygon")
+        # print "Reload geojson (LineString)"
+        self.canvas_line.clear()
+        self._geojson_part(geojson, geotype="LineString")
 
     def on_source(self, instance, value):
         if value.startswith("http://") or value.startswith("https://"):
@@ -52,13 +90,16 @@ class GeoJsonMapLayer(MapLayer):
     def _load_geojson_url(self, url, r):
         self.geojson = r.json()
 
-    def _geojson_part(self, part):
+    def _geojson_part(self, part, geotype=None):
         tp = part["type"]
         if tp == "FeatureCollection":
             for feature in part["features"]:
+                if geotype and feature["geometry"]["type"] != geotype:
+                    continue
                 self._geojson_part_f(feature)
         elif tp == "Feature":
-            self._geojson_part_f(part)
+            if geotype and feature["geometry"]["type"] == geotype:
+                self._geojson_part_f(part)
         else:
             # unhandled geojson part
             pass
@@ -68,7 +109,11 @@ class GeoJsonMapLayer(MapLayer):
         geometry = feature["geometry"]
         graphics = self._geojson_part_geometry(geometry, properties)
         for g in graphics:
-            self.canvas.add(g)
+            tp = geometry["type"]
+            if tp == "Polygon":
+                self.g_canvas_polygon.add(g)
+            else:
+                self.canvas_line.add(g)
 
     def _geojson_part_geometry(self, geometry, properties):
         from kivy.graphics import Mesh, Line, Color
@@ -106,4 +151,7 @@ class GeoJsonMapLayer(MapLayer):
         view = self.parent
         zoom = view.zoom
         for lon, lat in lonlats:
-            yield view.get_window_xy_from(lat, lon, zoom)
+            p = view.get_window_xy_from(lat, lon, zoom)
+            p = p[0] - self.parent.delta_x, p[1] - self.parent.delta_y
+            p = self.parent._scatter.to_local(*p)
+            yield p
