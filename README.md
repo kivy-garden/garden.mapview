@@ -34,6 +34,14 @@ pip install futures requests
 If you use it on Android / iOS, don't forget to add `openssl` as a requirements,
 otherwise you'll have an issue when importing `urllib3` from `requests`.
 
+# Install
+
+Install the mapview garden module using the `garden` tool:
+
+```
+garden install mapview
+```
+
 # Usage
 
 This widget can be either used within Python or Kv. That's said, not
