@@ -275,6 +275,11 @@ class MapView(Widget):
     Default to True, even if it doesn't fully working yet.
     """
 
+    animation_duration = NumericProperty(100)
+    """Duration to animate Tiles alpha from 0 to 1 when it's ready to show.
+    Default to 100 as 100ms. Use 0 to deactivate.
+    """
+
     delta_x = NumericProperty(0)
     delta_y = NumericProperty(0)
     background_color = ListProperty([181 / 255., 208 / 255., 208 / 255., 1])
@@ -500,18 +505,31 @@ class MapView(Widget):
         super(MapView, self).__init__(**kwargs)
 
     def _animate_color(self, dt):
-        for tile in self._tiles:
-            if tile.state != "need-animation":
-                continue
-            tile.g_color.a += dt * 10.  # 100ms
-            if tile.g_color.a >= 1:
-                tile.state = "animated"
-        for tile in self._tiles_bg:
-            if tile.state != "need-animation":
-                continue
-            tile.g_color.a += dt * 10.  # 100ms
-            if tile.g_color.a >= 1:
-                tile.state = "animated"
+        # fast path
+        d = self.animation_duration
+        if d == 0:
+            for tile in self._tiles:
+                if tile.state == "need-animation":
+                    tile.g_color.a = 1.
+                    tile.state = "animated"
+            for tile in self._tiles_bg:
+                if tile.state == "need-animation":
+                    tile.g_color.a = 1.
+                    tile.state = "animated"
+        else:
+            d = d / 1000.
+            for tile in self._tiles:
+                if tile.state != "need-animation":
+                    continue
+                tile.g_color.a += dt / d
+                if tile.g_color.a >= 1:
+                    tile.state = "animated"
+            for tile in self._tiles_bg:
+                if tile.state != "need-animation":
+                    continue
+                tile.g_color.a += dt / d
+                if tile.g_color.a >= 1:
+                    tile.state = "animated"
 
     def add_widget(self, widget):
         if isinstance(widget, MapMarker):
