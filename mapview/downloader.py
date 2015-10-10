@@ -15,6 +15,8 @@ from mapview import CACHE_DIR
 
 class Downloader(object):
     _instance = None
+    MAX_WORKERS = 5
+    CAP_TIME = 0.064  # 15 FPS
 
     @staticmethod
     def instance():
@@ -22,7 +24,11 @@ class Downloader(object):
             Downloader._instance = Downloader()
         return Downloader._instance
 
-    def __init__(self, max_workers=5, cap_time=0.064):
+    def __init__(self, max_workers=None, cap_time=None):
+        if max_workers is None:
+            max_workers = Downloader.MAX_WORKERS
+        if cap_time is None:
+            cap_time = Downloader.CAP_TIME
         super(Downloader, self).__init__()
         self.is_paused = False
         self.cap_time = cap_time
