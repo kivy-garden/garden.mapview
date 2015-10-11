@@ -368,7 +368,10 @@ class MapView(Widget):
                      self.map_source.get_min_zoom(),
                      self.map_source.get_max_zoom())
         if int(zoom) == int(self._zoom):
-            return
+            if scale is None:
+                return
+            elif scale == self.scale:
+                return
         scale = scale or 1.
 
         # first, rescale the scatter
