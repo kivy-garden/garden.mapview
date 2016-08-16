@@ -128,12 +128,12 @@ class MapSource(object):
     def get_min_zoom(self):
         """Return the minimum zoom of this source
         """
-        return 0
+        return self.min_zoom
 
     def get_max_zoom(self):
         """Return the maximum zoom of this source
         """
-        return 19
+        return self.max_zoom
 
     def fill_tile(self, tile):
         """Add this tile to load within the downloader
