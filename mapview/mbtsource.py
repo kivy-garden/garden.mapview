@@ -27,6 +27,8 @@ class MBTilesMapSource(MapSource):
         # read metadata
         c = self.db.cursor()
         metadata = dict(c.execute("SELECT * FROM metadata"))
+        if metadata["format"] == "pbf":
+            raise ValueError("Only raster maps are supported, not vector maps.")
         self.min_zoom = int(metadata["minzoom"])
         self.max_zoom = int(metadata["maxzoom"])
         self.attribution = metadata.get("attribution", "")
