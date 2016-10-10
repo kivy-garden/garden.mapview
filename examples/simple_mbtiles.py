@@ -9,9 +9,14 @@ is not the case on every platform at 1.8.1, but we're going to fix it.
 """
 
 import sys
+from kivy.base import runTouchApp
+
+if __name__ == '__main__' and __package__ is None:
+    from os import sys, path
+    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from mapview import MapView
 from mapview.mbtsource import MBTilesMapSource
-from kivy.base import runTouchApp
+
 
 source = MBTilesMapSource(sys.argv[1])
 runTouchApp(MapView(
