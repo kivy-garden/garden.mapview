@@ -6,6 +6,7 @@ from os.path import join, dirname
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.widget import Widget
+from kivy.uix.label import Label
 from kivy.uix.image import Image
 from kivy.uix.scatter import Scatter
 from kivy.uix.behaviors import ButtonBehavior
@@ -20,6 +21,9 @@ from mapview import MIN_LONGITUDE, MAX_LONGITUDE, MIN_LATITUDE, MAX_LATITUDE, \
     CACHE_DIR, Coordinate, Bbox
 from mapview.source import MapSource
 from mapview.utils import clamp
+
+import webbrowser
+
 
 
 Builder.load_string("""
@@ -48,13 +52,14 @@ Builder.load_string("""
             size: self.size
         StencilPop
 
-    Label:
+    ClickableLabel:
         text: root.map_source.attribution if hasattr(root.map_source, "attribution") else ""
         size_hint: None, None
         size: self.texture_size[0] + sp(8), self.texture_size[1] + sp(4)
         font_size: "10sp"
         right: [root.right, self.center][0]
         color: 0, 0, 0, 1
+        markup: True
         canvas.before:
             Color:
                 rgba: .8, .8, .8, .8
@@ -77,6 +82,10 @@ Builder.load_string("""
         size: root.popup_size
 
 """)
+
+class ClickableLabel(Label):
+    def on_ref_press(self, *args):
+        webbrowser.open(str(args[0]), new=2)
 
 
 class Tile(Rectangle):
