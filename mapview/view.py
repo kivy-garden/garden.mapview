@@ -341,6 +341,8 @@ class MapView(Widget):
         y = ms.get_y(zoom, lat) - vy
         x *= scale
         y *= scale
+        x = x + self.pos[0]
+        y = y + self.pos[1]
         return x, y
 
     def center_on(self, *args):
