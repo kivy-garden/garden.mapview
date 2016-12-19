@@ -19,8 +19,8 @@ import io
 
 
 class MBTilesMapSource(MapSource):
-    def __init__(self, filename):
-        super(MBTilesMapSource, self).__init__()
+    def __init__(self, filename, **kwargs):
+        super(MBTilesMapSource, self).__init__(**kwargs)
         self.filename = filename
         self.db = sqlite3.connect(filename)
 
@@ -52,7 +52,7 @@ class MBTilesMapSource(MapSource):
     def fill_tile(self, tile):
         if tile.state == "done":
             return
-        Downloader.instance().submit(self._load_tile, tile)
+        Downloader.instance(self.cache_dir).submit(self._load_tile, tile)
 
     def _load_tile(self, tile):
         # global db context cannot be shared across threads.

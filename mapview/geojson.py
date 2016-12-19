@@ -207,6 +207,7 @@ class GeoJsonMapLayer(MapLayer):
 
     def __init__(self, **kwargs):
         super(GeoJsonMapLayer, self).__init__(**kwargs)
+        self.cache_dir = kwargs.get('cache_dir', None)
         with self.canvas:
             self.canvas_polygon = Canvas()
             self.canvas_line = Canvas()
@@ -254,7 +255,9 @@ class GeoJsonMapLayer(MapLayer):
 
     def on_source(self, instance, value):
         if value.startswith("http://") or value.startswith("https://"):
-            Downloader.instance().download(value, self._load_geojson_url)
+            Downloader.instance(
+                cache_dir=self.cache_dir
+            ).download(value, self._load_geojson_url)
         else:
             with open(value, "rb") as fd:
                 geojson = json.load(fd)

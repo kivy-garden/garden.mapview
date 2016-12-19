@@ -4,7 +4,8 @@ __all__ = ["MapSource"]
 
 from kivy.metrics import dp
 from math import cos, ceil, log, tan, pi, atan, exp
-from mapview import MIN_LONGITUDE, MAX_LONGITUDE, MIN_LATITUDE, MAX_LATITUDE
+from mapview import MIN_LONGITUDE, MAX_LONGITUDE, MIN_LATITUDE, MAX_LATITUDE, \
+    CACHE_DIR
 from mapview.downloader import Downloader
 from mapview.utils import clamp
 import hashlib
@@ -46,7 +47,7 @@ class MapSource(object):
         cache_key=None, min_zoom=0, max_zoom=19, tile_size=256,
         image_ext="png",
         attribution="© OpenStreetMap contributors",
-        subdomains="abc"):
+        subdomains="abc", **kwargs):
         super(MapSource, self).__init__()
         if cache_key is None:
             # possible cache hit, but very unlikely
@@ -63,17 +64,19 @@ class MapSource(object):
         self.dp_tile_size = min(dp(self.tile_size), self.tile_size * 2)
         self.default_lat = self.default_lon = self.default_zoom = None
         self.bounds = None
+        self.cache_dir = kwargs.get('cache_dir', CACHE_DIR)
 
     @staticmethod
-    def from_provider(key):
+    def from_provider(key, **kwargs):
         provider = MapSource.providers[key]
+        cache_dir = kwargs.get('cache_dir', CACHE_DIR)
         options = {}
         is_overlay, min_zoom, max_zoom, url, attribution = provider[:5]
         if len(provider) > 5:
             options = provider[5]
         return MapSource(cache_key=key, min_zoom=min_zoom,
-                         max_zoom=max_zoom, url=url, attribution=attribution,
-                         **options)
+                         max_zoom=max_zoom, url=url, cache_dir=cache_dir,
+                         attribution=attribution, **options)
 
     def get_x(self, zoom, lon):
         """Get the x position on the map using this map source's projection
@@ -135,4 +138,4 @@ class MapSource(object):
         """
         if tile.state == "done":
             return
-        Downloader.instance().download_tile(tile)
+        Downloader.instance(cache_dir=self.cache_dir).download_tile(tile)

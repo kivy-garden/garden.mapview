@@ -19,12 +19,15 @@ class Downloader(object):
     CAP_TIME = 0.064  # 15 FPS
 
     @staticmethod
-    def instance():
+    def instance(cache_dir):
         if Downloader._instance is None:
-            Downloader._instance = Downloader()
+            if not cache_dir:
+                cache_dir = CACHE_DIR
+            Downloader._instance = Downloader(cache_dir=cache_dir)
         return Downloader._instance
 
-    def __init__(self, max_workers=None, cap_time=None):
+    def __init__(self, max_workers=None, cap_time=None, **kwargs):
+        self.cache_dir = kwargs.get('cache_dir', CACHE_DIR)
         if max_workers is None:
             max_workers = Downloader.MAX_WORKERS
         if cap_time is None:
@@ -35,8 +38,8 @@ class Downloader(object):
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         self._futures = []
         Clock.schedule_interval(self._check_executor, 1 / 60.)
-        if not exists(CACHE_DIR):
-            makedirs(CACHE_DIR)
+        if not exists(self.cache_dir):
+            makedirs(self.cache_dir)
 
     def submit(self, f, *args, **kwargs):
         future = self.executor.submit(f, *args, **kwargs)
