@@ -155,7 +155,7 @@ class MapMarkerPopup(MapMarker):
         if widget is not self.placeholder:
             self.placeholder.remove_widget(widget)
         else:
-            super(MarkerMapLayer, self).remove_widget(widget)
+            super(MapMarkerPopup, self).remove_widget(widget)
 
     def on_is_open(self, *args):
         self.refresh_open_status()
@@ -859,7 +859,7 @@ class MapView(Widget):
         while tiles:
             tile = tiles.pop()
             if tile.state == "loading":
-                tile.state == "done"
+                tile.state = "done"
                 continue
             btiles.append(tile)
 
