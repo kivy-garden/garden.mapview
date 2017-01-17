@@ -28,22 +28,6 @@ from mapview.view import MapLayer
 from mapview.downloader import Downloader
 
 COLORS = {
-    'aqua': '#00ffff',
-    'black': '#000000',
-    'blue': '#0000ff',
-    'fuchsia': '#ff00ff',
-    'green': '#008000',
-    'grey': '#808080',
-    'lime': '#00ff00',
-    'maroon': '#800000',
-    'navy': '#000080',
-    'olive': '#808000',
-    'purple': '#800080',
-    'red': '#ff0000',
-    'silver': '#c0c0c0',
-    'teal': '#008080',
-    'white': '#ffffff',
-    'yellow': '#ffff00',
     'aliceblue': '#f0f8ff',
     'antiquewhite': '#faebd7',
     'aqua': '#00ffff',
