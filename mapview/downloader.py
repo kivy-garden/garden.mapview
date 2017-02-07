@@ -4,13 +4,16 @@ __all__ = ["Downloader"]
 
 from kivy.clock import Clock
 from os.path import join, exists
-from os import makedirs
+from os import makedirs, environ
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 from random import choice
 import requests
 import traceback
 from time import time
 from mapview import CACHE_DIR
+
+
+DEBUG = "MAPVIEW_DEBUG_DOWNLOADER" in environ
 
 
 class Downloader(object):
@@ -46,14 +49,20 @@ class Downloader(object):
         self._futures.append(future)
 
     def download_tile(self, tile):
+        if DEBUG:
+            print("Downloader: queue(tile) zoom={} x={} y={}".format(tile.zoom, tile.tile_x, tile.tile_y))
         future = self.executor.submit(self._load_tile, tile)
         self._futures.append(future)
 
     def download(self, url, callback, **kwargs):
+        if DEBUG:
+            print("Downloader: queue(url) {}".format(url))
         future = self.executor.submit(self._download_url, url, callback, kwargs)
         self._futures.append(future)
 
     def _download_url(self, url, callback, kwargs):
+        if DEBUG:
+            print("Downloader: download(url) {}".format(url))
         r = requests.get(url, **kwargs)
         return callback, (url, r, )
 
@@ -62,11 +71,14 @@ class Downloader(object):
             return
         cache_fn = tile.cache_fn
         if exists(cache_fn):
+            if DEBUG:
+                print("Downloader: use cache {}".format(cache_fn))
             return tile.set_source, (cache_fn, )
         tile_y = tile.map_source.get_row_count(tile.zoom) - tile.tile_y - 1
         uri = tile.map_source.url.format(z=tile.zoom, x=tile.tile_x, y=tile_y,
                               s=choice(tile.map_source.subdomains))
-        #print "Download {}".format(uri)
+        if DEBUG:
+            print("Downloader: download(tile) {}".format(uri))
         data = requests.get(uri, timeout=5).content
         with open(cache_fn, "wb") as fd:
             fd.write(data)
