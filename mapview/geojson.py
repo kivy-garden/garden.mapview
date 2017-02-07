@@ -23,6 +23,10 @@ import json
 from kivy.properties import StringProperty, ObjectProperty
 from kivy.graphics import (Canvas, PushMatrix, PopMatrix, MatrixInstruction,
                            Translate, Scale)
+from kivy.graphics import Mesh, Line, Color
+from kivy.graphics.tesselator import Tesselator, WINDING_ODD, TYPE_POLYGONS
+from kivy.utils import get_color_from_hex
+from kivy.metrics import dp
 from kivy.utils import get_color_from_hex
 from mapview.view import MapLayer
 from mapview.downloader import Downloader
@@ -212,7 +216,7 @@ class GeoJsonMapLayer(MapLayer):
         if zoom is None:
             self.initial_zoom = zoom = pzoom
         if zoom != pzoom:
-            diff = 2 ** (pzoom - zoom)
+            diff = 2**(pzoom - zoom)
             vx /= diff
             vy /= diff
             self.g_scale.x = self.g_scale.y = diff
@@ -225,6 +229,55 @@ class GeoJsonMapLayer(MapLayer):
             update = not self.first_time
             self.on_geojson(self, self.geojson, update=update)
             self.first_time = False
+
+    def traverse_feature(self, func, part=None):
+        """Traverse the whole geojson and call the func with every element
+        found.
+        """
+        if part is None:
+            part = self.geojson
+        if not part:
+            return
+        tp = part["type"]
+        if tp == "FeatureCollection":
+            for feature in part["features"]:
+                func(feature)
+        elif tp == "Feature":
+            func(feature)
+
+    @property
+    def bounds(self):
+        # return the min lon, max lon, min lat, max lat
+        bounds = [float("inf"), float("-inf"), float("inf"), float("-inf")]
+
+        def _submit_coordinate(coord):
+            lon, lat = coord
+            bounds[0] = min(bounds[0], lon)
+            bounds[1] = max(bounds[1], lon)
+            bounds[2] = min(bounds[2], lat)
+            bounds[3] = max(bounds[3], lat)
+
+        def _get_bounds(feature):
+            geometry = feature["geometry"]
+            tp = geometry["type"]
+            if tp == "Point":
+                _submit_coordinate(geometry["coordinates"])
+            elif tp == "Polygon":
+                for coordinate in geometry["coordinates"][0]:
+                    _submit_coordinate(coordinate)
+            elif tp == "MultiPolygon":
+                for polygon in geometry["coordinates"]:
+                    for coordinate in polygon[0]:
+                        _submit_coordinate(coordinate)
+        self.traverse_feature(_get_bounds)
+        return bounds
+
+    @property
+    def center(self):
+        min_lon, max_lon, min_lat, max_lat = self.bounds
+        cx = (max_lon - min_lon) / 2.
+        cy = (max_lat - min_lat) / 2.
+        return min_lon + cx, min_lat + cy
 
     def on_geojson(self, instance, geojson, update=False):
         if self.parent is None:
@@ -276,10 +329,6 @@ class GeoJsonMapLayer(MapLayer):
                 self.canvas_line.add(g)
 
     def _geojson_part_geometry(self, geometry, properties):
-        from kivy.graphics import Mesh, Line, Color
-        from kivy.graphics.tesselator import Tesselator, WINDING_ODD, TYPE_POLYGONS
-        from kivy.utils import get_color_from_hex
-        from kivy.metrics import dp
         tp = geometry["type"]
         graphics = []
         if tp == "Polygon":
@@ -294,9 +343,11 @@ class GeoJsonMapLayer(MapLayer):
             color = self._get_color_from(properties.get("color", "FF000088"))
             graphics.append(Color(*color))
             for vertices, indices in tess.meshes:
-                graphics.append(Mesh(vertices=vertices,
-                                     indices=indices,
-                                     mode="triangle_fan"))
+                graphics.append(
+                    Mesh(
+                        vertices=vertices,
+                        indices=indices,
+                        mode="triangle_fan"))
 
         elif tp == "LineString":
             stroke = get_color_from_hex(properties.get("stroke", "#ffffff"))
