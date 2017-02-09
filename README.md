@@ -10,7 +10,9 @@ even if this one works very well, it just works on Android with Kivy.
 I wanted a map widget that can support custom map, and designed with
 the latests state-of-the-art Kivy's methods.
 
-![ScreenShot](https://raw.github.com/kivy-garden/garden.mapview/master/screenshot.png)
+![ScreenShot](https://cloud.githubusercontent.com/assets/37904/22764226/925c93ce-ee69-11e6-90ed-88123bfa731f.png)
+
+![Marker clustering](https://cloud.githubusercontent.com/assets/37904/22764225/92516f12-ee69-11e6-99d5-6346e302766d.png)
 
 # Features
 
