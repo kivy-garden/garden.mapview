@@ -365,7 +365,102 @@ API
     .. py:attribute:: geojson
 
     A dictionary structured as a Geojson. This attribute contain the content
-    of a :attr:`source` if passed. You
+    of a :attr:`source` if passed.
+
+
+.. py:module:: mapview.clustered_marker_layer
+
+.. py:class:: ClusteredMarkerLayer(MapLayer)
+
+    **Experimental** Layout that implement `marker clustering
+    <https://developers.google.com/maps/documentation/javascript/marker-clustering>`_.
+    It implement its own version of `Super Cluster
+    <https://github.com/mapbox/supercluster/>`_, based itself on a `KD-tree
+    <https://github.com/mourner/kdbush/>`_.
+
+    Aka you can load like 2000 markers without issues. The cluster index is
+    immutable, so if you add a new marker, it will be rebuild from scratch.
+
+    Please note that the widget creation is done on the fly by the layer,
+    not by you.
+
+    DONT use `add_widget`, use :meth:`add_marker`
+
+    Example::
+
+        layer = ClusteredMarkerLayer()
+        for i in range(2000):
+            lon = random() * 360 - 180
+            lat = random() * 180 - 90
+            layer.add_marker(lon=lon, lat=lat, cls=MapMarker)
+
+        # then you can add the layer to your mapview
+        mapview = MapView()
+        mapview.add_widget(layer)
+
+    .. py:attribute:: cluster_cls
+
+    Reference to the class widget for creating a cluster widget. Defaults to
+    :class:`ClusterMapMarker`
+
+    .. py:attribute:: cluster_min_zoom
+
+    Minimum zoom level at which clusters are generated. Defaults to 0
+
+    .. py:attribute:: cluster_max_zoom
+
+    Maximum zoom level at which clusters are generated. Defaults to 16
+
+    .. py:attribute:: cluster_radius
+
+    Cluster radius, in pixels. Defaults to 40dp
+
+    .. py:attribute:: cluster_extent
+
+    Tile extent. Radius is calculated relative to this value. Defaults
+    to 512.
+
+    .. py:attribute:: cluster_node_size
+
+    Size of the KD-tree leaf node. Affects performance. Defaults to 64.
+
+    .. py:method:: add_marker(lon, lat, cls=MapMarker, options=None)
+
+    Method to add a marker to the layer.
+
+    :param float lon: Longitude
+    :param float lat: Latitude
+    :param object cls: Widget class to use for creating this marker.
+                       Defaults to :class:`MapMarker`
+    :param dict options: Options to pass to the widget at instanciation.
+                         Defaults to an empty dict.
+    :return: The instance of a Marker (internal class, not the widget)
+
+    .. py::method:: build_cluster()
+
+    Method to call for building the cluster. It is done automatically at the
+    first rendering. If you missed it, or need to rebuild after readding
+    marker, just call this function.
+
+.. py:class:: ClusterMapMarker(MapMarker)
+
+    Widget created for displaying a Cluster.
+
+    .. py:attribute:: cluster
+
+    Reference to the Cluster used for this widget
+
+    .. py:attribute:: num_points
+
+    Number of marker that the cluster contain.
+
+    .. py:attribute:: text_color
+
+    Color used for the text, defaults to [.1, .1, .1, 1].
+    If you want others options, best is to do your own cluster
+    widget including the label you want (font, size, etc) and customizing
+    the background color.
+
 
 Indices and tables
 ==================
