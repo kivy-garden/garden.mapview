@@ -21,6 +21,7 @@ the latests state-of-the-art Kivy's methods.
 * blazing fast!
 * supports Z/X/Y providers by default with `MapSource`
 * supports [.mbtiles](http://mbtiles.org) via `MBTilesMapSource`
+* supports marker clustering, via `ClusteredMarkerLayer`
 
 # Requirements
 
