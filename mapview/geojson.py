@@ -28,6 +28,7 @@ from kivy.graphics.tesselator import Tesselator, WINDING_ODD, TYPE_POLYGONS
 from kivy.utils import get_color_from_hex
 from kivy.metrics import dp
 from kivy.utils import get_color_from_hex
+from mapview import CACHE_DIR
 from mapview.view import MapLayer
 from mapview.downloader import Downloader
 
@@ -190,15 +191,14 @@ class GeoJsonMapLayer(MapLayer):
 
     source = StringProperty()
     geojson = ObjectProperty()
-    initial_zoom = None
-    first_time = True
+    cache_dir = StringProperty(CACHE_DIR)
 
     def __init__(self, **kwargs):
+        self.first_time = True
+        self.initial_zoom = None
         super(GeoJsonMapLayer, self).__init__(**kwargs)
-        self.cache_dir = kwargs.get('cache_dir', None)
         with self.canvas:
             self.canvas_polygon = Canvas()
-            self.canvas_line = Canvas()
         with self.canvas_polygon.before:
             PushMatrix()
             self.g_matrix = MatrixInstruction()
@@ -243,7 +243,7 @@ class GeoJsonMapLayer(MapLayer):
             for feature in part["features"]:
                 func(feature)
         elif tp == "Feature":
-            func(feature)
+            func(part)
 
     @property
     def bounds(self):

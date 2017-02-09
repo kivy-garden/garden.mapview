@@ -298,6 +298,7 @@ class MapView(Widget):
     delta_x = NumericProperty(0)
     delta_y = NumericProperty(0)
     background_color = ListProperty([181 / 255., 208 / 255., 208 / 255., 1])
+    cache_dir = StringProperty(CACHE_DIR)
     _zoom = NumericProperty(0)
     _pause = BooleanProperty(False)
     _scale = 1.
@@ -518,7 +519,6 @@ class MapView(Widget):
         self._scale_target_anim = False
         self._scale_target = 1.
         self._touch_count = 0
-        self.cache_dir = kwargs.get('cache_dir', CACHE_DIR)
         self.map_source.cache_dir = self.cache_dir
         Clock.schedule_interval(self._animate_color, 1 / 60.)
         self.lat = kwargs.get("lat", self.lat)
