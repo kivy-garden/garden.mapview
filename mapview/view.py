@@ -213,6 +213,8 @@ class MarkerMapLayer(MapLayer):
         super(MarkerMapLayer, self).remove_widget(marker)
 
     def reposition(self):
+        if not self.markers:
+            return
         mapview = self.parent
         set_marker_position = self.set_marker_position
         bbox = None
