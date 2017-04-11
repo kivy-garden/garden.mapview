@@ -50,14 +50,16 @@ class Downloader(object):
 
     def download_tile(self, tile):
         if DEBUG:
-            print("Downloader: queue(tile) zoom={} x={} y={}".format(tile.zoom, tile.tile_x, tile.tile_y))
+            print("Downloader: queue(tile) zoom={} x={} y={}".format(
+                tile.zoom, tile.tile_x, tile.tile_y))
         future = self.executor.submit(self._load_tile, tile)
         self._futures.append(future)
 
     def download(self, url, callback, **kwargs):
         if DEBUG:
             print("Downloader: queue(url) {}".format(url))
-        future = self.executor.submit(self._download_url, url, callback, kwargs)
+        future = self.executor.submit(
+            self._download_url, url, callback, kwargs)
         self._futures.append(future)
 
     def _download_url(self, url, callback, kwargs):
@@ -76,14 +78,20 @@ class Downloader(object):
             return tile.set_source, (cache_fn, )
         tile_y = tile.map_source.get_row_count(tile.zoom) - tile.tile_y - 1
         uri = tile.map_source.url.format(z=tile.zoom, x=tile.tile_x, y=tile_y,
-                              s=choice(tile.map_source.subdomains))
+                                         s=choice(tile.map_source.subdomains))
         if DEBUG:
             print("Downloader: download(tile) {}".format(uri))
-        data = requests.get(uri, timeout=5).content
-        with open(cache_fn, "wb") as fd:
-            fd.write(data)
-        #print "Downloaded {} bytes: {}".format(len(data), uri)
-        return tile.set_source, (cache_fn, )
+        req = requests.get(uri, timeout=5)
+        try:
+            req.raise_for_status()
+            data = req.content
+            with open(cache_fn, "wb") as fd:
+                fd.write(data)
+            if DEBUG:
+                print("Downloaded {} bytes: {}".format(len(data), uri))
+            return tile.set_source, (cache_fn, )
+        except Exception as e:
+            print("Downloader error: {!r}".format(e))
 
     def _check_executor(self, dt):
         start = time()
@@ -92,7 +100,7 @@ class Downloader(object):
                 self._futures.remove(future)
                 try:
                     result = future.result()
-                except:
+                except Exception:
                     traceback.print_exc()
                     # make an error tile?
                     continue
@@ -101,7 +109,8 @@ class Downloader(object):
                 callback, args = result
                 callback(*args)
 
-                # capped executor in time, in order to prevent too much slowiness.
+                # capped executor in time, in order to prevent too much
+                # slowiness.
                 # seems to works quite great with big zoom-in/out
                 if time() - start > self.cap_time:
                     break
