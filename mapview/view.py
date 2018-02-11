@@ -302,6 +302,7 @@ class MapView(Widget):
     _zoom = NumericProperty(0)
     _pause = BooleanProperty(False)
     _scale = 1.
+    _disabled_count = 0
 
     __events__ = ["on_map_relocated"]
 
