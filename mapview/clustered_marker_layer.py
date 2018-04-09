@@ -293,13 +293,13 @@ class SuperCluster(object):
         clusters = points
         for z in range(self.max_zoom, self.min_zoom - 1, -1):
             start = time()
-            print "build tree", z
+            print("build tree", z)
             self.trees[z + 1] = KDBush(clusters, self.node_size)
-            print "kdbush", (time() - start) * 1000
+            print("kdbush", (time() - start) * 1000)
             start = time()
             clusters = self._cluster(clusters, z)
             print(len(clusters))
-            print "clustering", (time() - start) * 1000
+            print("clustering", (time() - start) * 1000)
         self.trees[self.min_zoom] = KDBush(clusters, self.node_size)
 
     def get_clusters(self, bbox, zoom):
