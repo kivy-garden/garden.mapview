@@ -22,6 +22,7 @@ from mapview import MIN_LONGITUDE, MAX_LONGITUDE, MIN_LATITUDE, MAX_LATITUDE, \
     CACHE_DIR, Coordinate, Bbox
 from mapview.source import MapSource
 from mapview.utils import clamp
+from itertools import takewhile
 
 import webbrowser
 
@@ -227,7 +228,16 @@ class MarkerMapLayer(MapLayer):
             if bbox.collide(marker.lat, marker.lon):
                 set_marker_position(mapview, marker)
                 if not marker.parent:
-                    super(MarkerMapLayer, self).add_widget(marker)
+                    before = list(takewhile(
+                        lambda (i, m): m.lat < marker.lat,
+                        enumerate(self.children)
+                    ))
+                    if before:
+                        kwargs = {'index': before[-1][0] + 1}
+                    else:
+                        kwargs = {}
+
+                    super(MarkerMapLayer, self).add_widget(marker, **kwargs)
             else:
                 super(MarkerMapLayer, self).remove_widget(marker)
 
