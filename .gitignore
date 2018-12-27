@@ -4,3 +4,4 @@
 docs/build/*
 cache/*
 examples/cache/*
+.tox/
