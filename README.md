@@ -1,6 +1,6 @@
 # Mapview
 
-[![Build Status](https://travis-ci.org/kivy-garden/garden.mapview.svg?branch=master)](https://travis-ci.org/kivy-garden/garden.mapview)
+[![Build Status](https://travis-ci.com/kivy-garden/garden.mapview.svg?branch=master)](https://travis-ci.com/kivy-garden/garden.mapview)
 
 Mapview is a Kivy widget for displaying interactive maps. It has been
 designed with lot of inspirations of
