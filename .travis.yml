@@ -1,11 +1,23 @@
-sudo: false
+sudo: required
 
-language: python
+language: generic
 
-python:
-  - "2.7"
-  - "3.6"
+env:
+  global:
+    - DISPLAY=:99.0
 
-install: pip install tox-travis
+services:
+  - docker
 
-script: tox
+before_install:
+  - sudo apt update -qq > /dev/null
+  - sudo apt install --yes --no-install-recommends xvfb
+
+install:
+  - docker build --tag=mapview-linux .
+
+before_script:
+  - sh -e /etc/init.d/xvfb start
+
+script:
+  - docker run -e DISPLAY=unix$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix mapview-linux /bin/sh -c 'tox'

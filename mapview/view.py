@@ -231,7 +231,6 @@ class MarkerMapLayer(MapLayer):
         mapview = self.parent
         set_marker_position = self.set_marker_position
         bbox = None
-        latest_bbox_size = dp(48)
         # reposition the markers depending the latitude
         markers = sorted(self.markers, key=lambda x: -x.lat)
         margin = max((max(marker.size) for marker in markers))
