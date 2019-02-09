@@ -206,7 +206,7 @@ class MarkerMapLayer(MapLayer):
     def insert_marker(self, marker, **kwargs):
         if self.order_marker_by_latitude:
             before = list(takewhile(
-                lambda (i, m): m.lat < marker.lat,
+                lambda i_m: i_m[1].lat < marker.lat,
                 enumerate(self.children)
             ))
             if before:
