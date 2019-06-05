@@ -14,6 +14,9 @@ from mapview import CACHE_DIR
 
 
 DEBUG = "MAPVIEW_DEBUG_DOWNLOADER" in environ
+# user agent is needed because since may 2019 OSM gives me a 429 or 403 server error
+# I tried it with a simpler one (just Mozilla/5.0) this also gets rejected
+USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.47 Safari/537.36'
 
 
 class Downloader(object):
@@ -81,7 +84,7 @@ class Downloader(object):
                                          s=choice(tile.map_source.subdomains))
         if DEBUG:
             print("Downloader: download(tile) {}".format(uri))
-        req = requests.get(uri, timeout=5)
+        req = requests.get(uri, headers={'User-agent': USER_AGENT},timeout=5)
         try:
             req.raise_for_status()
             data = req.content
