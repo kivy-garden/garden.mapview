@@ -30,11 +30,11 @@ class MapSource(object):
         "thunderforest-transport": (0, 0, 19, "http://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}.png", attribution_thunderforest),
         "thunderforest-landscape": (0, 0, 19, "http://{s}.tile.thunderforest.com/landscape/{z}/{x}/{y}.png", attribution_thunderforest),
         "thunderforest-outdoors": (0, 0, 19, "http://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png", attribution_thunderforest),
-        
+
         # no longer available
         #"mapquest-osm": (0, 0, 19, "http://otile{s}.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpeg", "Tiles Courtesy of Mapquest", {"subdomains": "1234", "image_ext": "jpeg"}),
         #"mapquest-aerial": (0, 0, 19, "http://oatile{s}.mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpeg", "Tiles Courtesy of Mapquest", {"subdomains": "1234", "image_ext": "jpeg"}),
-        
+
         # more to add with
         # https://github.com/leaflet-extras/leaflet-providers/blob/master/leaflet-providers.js
         # not working ?
@@ -43,11 +43,11 @@ class MapSource(object):
     }
 
     def __init__(self,
-        url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        cache_key=None, min_zoom=0, max_zoom=19, tile_size=256,
-        image_ext="png",
-        attribution="© OpenStreetMap contributors",
-        subdomains="abc", **kwargs):
+            url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            cache_key=None, min_zoom=0, max_zoom=19, tile_size=256,
+            image_ext="png",
+            attribution="© OpenStreetMap contributors",
+            subdomains="abc", **kwargs):
         super(MapSource, self).__init__()
         if cache_key is None:
             # possible cache hit, but very unlikely
@@ -91,7 +91,7 @@ class MapSource(object):
         """
         lat = clamp(-lat, MIN_LATITUDE, MAX_LATITUDE)
         lat = lat * pi / 180.
-        return ((1.0 - log(tan(lat) + 1.0 / cos(lat)) / pi) / \
+        return ((1.0 - log(tan(lat) + 1.0 / cos(lat)) / pi) /
             2. * pow(2., zoom)) * self.dp_tile_size
 
     def get_lon(self, zoom, x):

@@ -75,7 +75,7 @@ class MBTilesMapSource(MapSource):
         # no-file loading
         try:
             data = io.BytesIO(row[0])
-        except:
+        except Exception:
             # android issue, "buffer" does not have the buffer interface
             # ie row[0] buffer is not compatible with BytesIO on Android??
             data = io.BytesIO(bytes(row[0]))

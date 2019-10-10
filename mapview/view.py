@@ -587,7 +587,7 @@ class MapView(Widget):
     def animated_diff_scale_at(self, d, x, y):
         self._scale_target_time = 1.
         self._scale_target_pos = x, y
-        if self._scale_target_anim == False:
+        if self._scale_target_anim is False:
             self._scale_target_anim = True
             self._scale_target = d
         else:
@@ -798,7 +798,7 @@ class MapView(Widget):
             _, _ = bbox_for_zoom(vx / f, vy / f, w, h, tile.zoom)
 
             if tile_x < btile_x_first or tile_x >= btile_x_last or \
-                            tile_y < btile_y_first or tile_y >= btile_y_last:
+                    tile_y < btile_y_first or tile_y >= btile_y_last:
                 tile.state = "done"
                 self._tiles_bg.remove(tile)
                 self.canvas_map.before.remove(tile.g_color)
@@ -817,7 +817,7 @@ class MapView(Widget):
             tile_y = tile.tile_y
 
             if tile_x < tile_x_first or tile_x >= tile_x_last or \
-                            tile_y < tile_y_first or tile_y >= tile_y_last:
+                    tile_y < tile_y_first or tile_y >= tile_y_last:
                 tile.state = "done"
                 self.tile_map_set(tile_x, tile_y, False)
                 self._tiles.remove(tile)
@@ -837,8 +837,8 @@ class MapView(Widget):
         while arm_size < arm_max:
             for i in range(arm_size):
                 if not self.tile_in_tile_map(x, y) and \
-                                y >= tile_y_first and y < tile_y_last and \
-                                x >= tile_x_first and x < tile_x_last:
+                        y >= tile_y_first and y < tile_y_last and \
+                        x >= tile_x_first and x < tile_x_last:
                     self.load_tile(x, y, size, zoom)
 
                 x += dirs[turn % 4 + 1]

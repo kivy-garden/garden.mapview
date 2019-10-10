@@ -6,6 +6,7 @@ from collections import namedtuple
 
 Coordinate = namedtuple("Coordinate", ["lat", "lon"])
 
+
 class Bbox(tuple):
     def collide(self, *args):
         if isinstance(args[0], Coordinate):

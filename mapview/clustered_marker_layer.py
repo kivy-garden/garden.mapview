@@ -195,7 +195,6 @@ class KDBush(object):
                         result.append(ids[i])
                 continue
 
-
             m = int(floor((left + right) / 2.))
 
             x = coords[2 * m]
@@ -261,6 +260,7 @@ class Marker(object):
     def __repr__(self):
         return "<Marker lon={} lat={} source={}>".format(self.lon, self.lat,
                                                          self.source)
+
 
 class SuperCluster(object):
     """Port of supercluster from mapbox in pure python
@@ -353,8 +353,10 @@ class SuperCluster(object):
                     num_points2 = 1
                     if isinstance(b, Cluster):
                         num_points2 = b.num_points
-                    b.zoom = zoom # save the zoom (so it doesn't get processed twice)
-                    wx += b.x * num_points2 # accumulate coordinates for calculating weighted center
+                    # save the zoom (so it doesn't get processed twice)
+                    b.zoom = zoom
+                    #  accumulate coordinates for calculating weighted center
+                    wx += b.x * num_points2
                     wy += b.y * num_points2
                     num_points += num_points2
                     b.parent_id = i
@@ -372,6 +374,7 @@ class ClusterMapMarker(MapMarker):
     cluster = ObjectProperty()
     num_points = NumericProperty()
     text_color = ListProperty([.1, .1, .1, 1])
+
     def on_cluster(self, instance, cluster):
         self.num_points = cluster.num_points
 
