@@ -84,7 +84,7 @@ class Downloader(object):
                                          s=choice(tile.map_source.subdomains))
         if DEBUG:
             print("Downloader: download(tile) {}".format(uri))
-        req = requests.get(uri, headers={'User-agent': USER_AGENT},timeout=5)
+        req = requests.get(uri, headers={'User-agent': USER_AGENT}, timeout=5)
         try:
             req.raise_for_status()
             data = req.content
