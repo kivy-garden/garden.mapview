@@ -24,7 +24,7 @@ if layer.geojson:
     options["lat"] = lat
     min_lon, max_lon, min_lat, max_lat = layer.bounds
     radius = haversine(min_lon, min_lat, max_lon, max_lat)
-    zoom = get_zoom_for_radius(radius)
+    zoom = get_zoom_for_radius(radius, lat)
     options["zoom"] = zoom
 
 view = MapView(**options)

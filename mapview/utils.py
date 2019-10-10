@@ -1,8 +1,11 @@
 # coding=utf-8
 
-__all__ = ["clamp"]
+__all__ = ["clamp", "haversine", "get_zoom_for_radius"]
 
-from math import radians, cos, sin, asin, sqrt, log
+from math import radians, cos, sin, asin, sqrt, pi
+
+from kivy.core.window import Window
+from kivy.metrics import dp
 
 
 def clamp(x, minimum, maximum):
@@ -28,14 +31,20 @@ def haversine(lon1, lat1, lon2, lat2):
     return km
 
 
-def get_zoom_for_radius(radius):
-    # not super accurate, sorry
-    radius = radius * 1000
-    equatorLength = 40075004
-    widthInPixels = 1024
-    metersPerPixel = equatorLength / 256
-    zoomLevel = 1
-    while metersPerPixel * widthInPixels > radius:
-        metersPerPixel /= 2
-        zoomLevel += 1
-    return zoomLevel - 1
+def get_zoom_for_radius(radius_km, lat=None, tile_size=256.):
+    """See: https://wiki.openstreetmap.org/wiki/Zoom_levels"""
+    radius = radius_km * 1000.
+    if lat is None:
+        lat = 0.  # Do not compensate for the latitude
+
+    # Calculate the equatorial circumference based on the WGS-84 radius
+    earth_circumference = 2. * pi * 6378137. * cos(lat * pi / 180.)
+
+    # Check how many tiles that are currently in view
+    nr_tiles_shown = min(Window.size) / dp(tile_size)
+
+    # Keep zooming in until we find a zoom level where the circle can fit inside the screen
+    zoom = 1
+    while earth_circumference / (2 << (zoom - 1)) * nr_tiles_shown > 2 * radius:
+        zoom += 1
+    return zoom - 1  # Go one zoom level back
