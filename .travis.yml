@@ -2,22 +2,12 @@ sudo: required
 
 language: generic
 
-env:
-  global:
-    - DISPLAY=:99.0
-
 services:
   - docker
-
-before_install:
-  - sudo apt update -qq > /dev/null
-  - sudo apt install --yes --no-install-recommends xvfb
+  - xvfb
 
 install:
   - docker build --tag=mapview-linux .
 
-before_script:
-  - sh -e /etc/init.d/xvfb start
-
 script:
-  - docker run -e DISPLAY=unix$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix mapview-linux /bin/sh -c 'tox'
+  - docker run -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix mapview-linux /bin/sh -c 'tox'
